@@ -1,0 +1,112 @@
+unit UDialog;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls,inifiles, ComCtrls, Spin;
+
+type
+  TfmDialog = class(TForm)
+    CBPort: TComboBox;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
+    Label4: TLabel;
+    Label5: TLabel;
+    CBBaud: TComboBox;
+    CBByte: TComboBox;
+    CBPar: TComboBox;
+    CBSB: TComboBox;
+    BtnOK: TButton;
+    BtnCancel: TButton;
+    Label6: TLabel;
+    EDTimeOut: TSpinEdit;
+    procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure BtnOKClick(Sender: TObject);
+  private
+    { Private declarations }
+    procedure SaveIni;
+    procedure LoadIni;
+  public
+    { Public declarations }
+  end;
+
+
+
+implementation
+ uses UComPort;
+{$R *.dfm}
+
+procedure TfmDialog.FormCreate(Sender: TObject);
+var i:integer;
+  //  hComm:THandle;
+    fPort:string;
+begin
+ CBPort.Clear;
+ for i:=0 to 25 do
+  begin
+   fPort:='COM'+inttostr(i+1);
+   {hcomm:=CreateFile(PCHAR(fPort),
+                      GENERIC_READ or  GENERIC_WRITE,
+                      0,
+                      nil,
+                      OPEN_EXISTING,
+                      FILE_ATTRIBUTE_NORMAL,
+                      0);
+  if hComm<>Invalid_Handle_Value then}
+  CBPort.Items.Add(fPort);
+//  CloseHandle(hComm); 
+ end;
+ LoadIni; 
+end;
+
+procedure TfmDialog.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+ Action:=caFree;
+end;
+
+procedure TfmDialog.LoadIni;
+var ini:TIniFile;
+   
+begin
+ ini:=TIniFile.Create(IniName);
+ try
+   CBPort.ItemIndex:=CBPort.Items.IndexOf(ini.ReadString('Port','Port','COM1'));
+   CBBaud.ItemIndex:=CBBaud.Items.IndexOf(ini.ReadString('Port','Baud','19200'));
+   CBByte.ItemIndex:=CBByte.Items.IndexOf(ini.ReadString('Port','Byte','8'));
+   CBPar.ItemIndex:=ini.ReadInteger('Port','Parity',0);
+   CBSB.ItemIndex:=ini.ReadInteger('Port','StopBits',2);
+   EDTimeOut.Value:=ini.ReadInteger('Port','TimeOut',500);
+
+ finally
+  ini.free;
+ end;
+
+end;
+
+procedure TfmDialog.SaveIni;
+var ini:TIniFile;
+begin
+ ini:=TIniFile.Create(IniName);
+ try
+   ini.WriteString('Port','Port',CBPort.Text);
+   ini.WriteString('Port','Baud',CBBaud.Text);
+   ini.WriteString('Port','Byte',CBByte.Text);
+   ini.WriteInteger('Port','Parity',CBPar.ItemIndex);
+   ini.WriteInteger('Port','StopBits',CBSB.ItemIndex);
+   ini.WriteInteger('Port','TimeOut',EDTimeOut.Value);
+   co.OpenPort;
+ finally
+  ini.free;
+ end;
+
+end;
+
+procedure TfmDialog.BtnOKClick(Sender: TObject);
+begin
+ SaveIni;
+end;
+
+end.

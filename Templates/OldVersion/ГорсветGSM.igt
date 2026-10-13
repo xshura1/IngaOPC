@@ -1,0 +1,765 @@
+<Header FileDescription="IngaOPC Template File" Version="0101" Checked="-1" Script="
+function BitStat (B1,B2:Word):boolean;
+    begin
+      if (B1 and (1 shl B2) &lt;&gt;0) then result:=true
+      else result:=false;
+    end;
+
+
+procedure SetOtvResult(Res:dword);
+var i:integer;
+begin
+ case Res of
+  0:[&quot;Statistics\Кол-во ответов&quot;].newvalue:=[&quot;Statistics\Кол-во ответов&quot;].oldvalue+1;
+  1:[&quot;Statistics\Кол-во не ответов&quot;].newvalue:=[&quot;Statistics\Кол-во не ответов&quot;].oldvalue+1;
+  2:begin
+     [&quot;Statistics\Кол-во не ответов от драйвера&quot;].newvalue:=[&quot;Statistics\Кол-во не ответов от драйвера&quot;].oldvalue+1;
+     {if [&quot;Статистика\FlagOldResult&quot;].oldvalue&lt;&gt;Res then
+      begin
+       i:=[&quot;Статистика\Не ответы по времени&quot;].newValueAsArrayCount;
+       [&quot;Статистика\Не ответы по времени&quot;].NewValueAsArray[i]:=now;       
+
+      end; }
+    end; 
+ end;   
+ 
+ if Res&lt;&gt;0 then
+  if [&quot;Statistics\FlagOldResult&quot;].oldvalue&lt;&gt;Res then
+      begin
+       i:=[&quot;Statistics\Не ответы по времени&quot;].newValueAsArrayCount;
+       [&quot;Statistics\Не ответы по времени&quot;].NewValueAsArray[i]:=now;       
+
+      end;
+ [&quot;Statistics\FlagOldResult&quot;].Newvalue:=Res;
+ if Res=0 then
+  [&quot;ShortSost&quot;].NewQuality:=OPC_QUALITY_GOOD
+ else
+  [&quot;ShortSost&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+
+
+
+end;
+ 
+procedure &lt;Состояние/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ if not FromGroup then
+  [&quot;Command_27&quot;].run;
+end;
+
+procedure &lt;Дата и время/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_8&quot;].count:=1;
+ [&quot;Command_8&quot;].run;
+end;
+
+procedure &lt;Дата и время/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+ var ss,s,m,h,d,mo,y:word;
+begin
+ try
+ [&quot;Command_7&quot;].count:=7;
+ DecodeDate([&quot;Commands\Дата и время&quot;].vqt.value,y,mo,d);
+ DecodeTime([&quot;Commands\Дата и время&quot;].vqt.value,h,m,s,ss);
+ [&quot;Command_7&quot;][0]:=s;
+ [&quot;Command_7&quot;][1]:=m;
+ [&quot;Command_7&quot;][2]:=h;
+ [&quot;Command_7&quot;][3]:=d;
+ [&quot;Command_7&quot;][4]:=mo;
+ [&quot;Command_7&quot;][5]:=1;
+ [&quot;Command_7&quot;][6]:=y-2000;
+ [&quot;Command_7&quot;].run;
+ except
+ end;
+end;
+
+
+procedure &lt;Эл. счетчик/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+var w:word;
+    dw:dword;
+begin
+ 
+ [&quot;Command_36&quot;].count:=5;
+ [&quot;Command_36&quot;][0]:=12;
+ dw:=[&quot;Commands\Эл. счетчик&quot;].vqt.value;
+ w:=word(dw);
+ [&quot;Command_36&quot;][1]:=byte(w);
+ w:=w shr 8;
+ [&quot;Command_36&quot;][2]:=byte(w);
+ 
+ w:=word(dw shr 16);
+ [&quot;Command_36&quot;][3]:=byte(w);
+ w:=w shr 8;
+ [&quot;Command_36&quot;][4]:=byte(w);
+ 
+ [&quot;Command_36&quot;].run;
+ [&quot;Команда 27 подавалась&quot;].newvalue:=false;
+
+end;
+
+
+
+procedure &lt;Command_27/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var b:byte;
+    sost:dword;
+    w:word;
+begin
+ SetOtvResult(DriverData.result);
+ 
+ if DriverData.result=0 then
+  begin
+   [&quot;Statistics\Кол-во принятых 27 команд&quot;].newvalue:=[&quot;Statistics\Кол-во принятых 27 команд&quot;].oldvalue+1;
+   b:=DriverData[0];
+   [&quot;TC\TC0&quot;].newvalue:=boolean(BitStat(b,0));
+   [&quot;TC\TC1&quot;].newvalue:=boolean(BitStat(b,1));
+   [&quot;TC\TC2&quot;].newvalue:=boolean(BitStat(b,2));
+   [&quot;TC\TC3&quot;].newvalue:=boolean(BitStat(b,3));
+   [&quot;TC\TC4&quot;].newvalue:=boolean(BitStat(b,4));
+   [&quot;TC\TC5&quot;].newvalue:=boolean(BitStat(b,5));
+   [&quot;TC\TC6&quot;].newvalue:=boolean(BitStat(b,6));
+   [&quot;TC\TC7&quot;].newvalue:=boolean(BitStat(b,7));
+   b:=DriverData[1];
+   [&quot;TC\TC8&quot;].newvalue:=boolean(BitStat(b,0));
+   [&quot;TC\TC9&quot;].newvalue:=boolean(BitStat(b,1));
+   [&quot;TC\TC10&quot;].newvalue:=boolean(BitStat(b,2));
+   [&quot;TC\TC11&quot;].newvalue:=boolean(BitStat(b,3));
+   [&quot;TC\TC12&quot;].newvalue:=boolean(BitStat(b,4));
+   [&quot;TC\TC13&quot;].newvalue:=boolean(BitStat(b,5));
+   [&quot;TC\TC14&quot;].newvalue:=boolean(BitStat(b,6));
+   [&quot;TC\TC15&quot;].newvalue:=boolean(BitStat(b,7));
+   b:=DriverData[2];
+   [&quot;TC\TC16&quot;].newvalue:=boolean(BitStat(b,0));
+   [&quot;TC\TC17&quot;].newvalue:=boolean(BitStat(b,1));
+   [&quot;TC\TC18&quot;].newvalue:=boolean(BitStat(b,2));
+   [&quot;TC\TC19&quot;].newvalue:=boolean(BitStat(b,3));
+   [&quot;TC\TC20&quot;].newvalue:=boolean(BitStat(b,4));
+   [&quot;TC\TC21&quot;].newvalue:=boolean(BitStat(b,5));
+   [&quot;TC\TC22&quot;].newvalue:=boolean(BitStat(b,6));
+   [&quot;TC\TC23&quot;].newvalue:=boolean(BitStat(b,7));
+   
+   
+   
+   [&quot;Commands\Эл. счетчик&quot;].newvalue:=MAKELONG(makeword(DriverData[5],DriverData[6]),
+                                               makeword(DriverData[7],DriverData[8]));
+                                               
+   [&quot;TIT\TIT0&quot;].newvalue:=DriverData[9];
+   [&quot;TIT\TIT1&quot;].newvalue:=DriverData[10];
+   [&quot;TIT\TIT2&quot;].newvalue:=DriverData[11];
+   [&quot;TIT\TIT3&quot;].newvalue:=DriverData[12];
+   [&quot;TIT\TIT4&quot;].newvalue:=DriverData[13];
+   [&quot;TIT\TIT5&quot;].newvalue:=DriverData[14];
+   
+    
+ 
+   
+   Case DriverData[15] and $3 of
+    0:[&quot;Commands\Управление&quot;].NewValue:=2; // вечерний
+    1:[&quot;Commands\Управление&quot;].NewValue:=1; // ночной
+    3:[&quot;Commands\Управление&quot;].NewValue:=0; // отключен
+   end; 
+   
+   
+   b:=DriverData[3];
+   [&quot;Commands\Охрана\Охрана внеш.&quot;].newvalue:=(b shr 2) and $3;
+   [&quot;Commands\Охрана\Охрана внут.&quot;].newvalue:=b and $3;
+   
+   
+   {  0-1 - режим работы пункта (0-отключен 1-ночной 2-вечерний)
+      2   - тревога на пункте (0-нет тревоги 1-тревога)
+      3-4 - логическое состояние охраны ВНЕШНЕЙ двери (0-взята 1-снята  2-тревога)
+      5-6 - логическое состояние охраны ВНУТРЕННЕЙ двери (0-взята 1-снята 2-тревога)
+      7   - физическое состояние ВНЕШНЕЙ двери (0-закрыта 1-открыта)
+      8   - физическое состояние ВНУТРЕННЕЙ двери (0-закрыта 1-открыта)
+      9   - пункт заблокирован (0-разблокирован 1-заблокирован)
+      10  - блокировка ночного режима на пункте (0-ночной режим разблокирован 1-заблокирован)
+
+  }
+   
+   
+   
+   sost:=[&quot;Commands\Управление&quot;].NewValue;
+   w:=[&quot;Commands\Охрана\Охрана внут.&quot;].newvalue;
+   sost:=sost or (w shl 3);
+   w:=[&quot;Commands\Охрана\Охрана внеш.&quot;].newvalue;
+   sost:=sost or (w shl 5);
+   w:=DriverData[1];
+   if (w and $20)&lt;&gt;$20 then // дверь внешняя
+    begin
+     w:=1;
+     sost:=sost or (w shl 7); 
+    end;
+   
+   if (w and $80)=$80 then // дверь внутренняя
+    begin
+     w:=1;
+     sost:=sost or (w shl 8); 
+    end;
+   
+   if not BitStat(DriverData[3],6) then
+    begin
+     sost:=sost or $200;
+     [&quot;Commands\Блокировка ПВ&quot;].NewValue:=true;
+    end
+   else
+    [&quot;Commands\Блокировка ПВ&quot;].NewValue:=false; 
+   
+   
+   if not BitStat(DriverData[3],5) then
+    begin
+     sost:=sost or $400;
+     [&quot;Commands\Блокировка ночного&quot;].NewValue:=true;
+    end
+   else
+    [&quot;Commands\Блокировка ночного&quot;].NewValue:=false; 
+      
+   [&quot;ShortSost&quot;].newvalue:=Sost;
+ 
+  end
+ else
+  begin
+   
+   [&quot;ShortSost&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+ 
+   [&quot;TC\TC0&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC1&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC2&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC3&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC4&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC5&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC6&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC7&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC8&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC9&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC10&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC11&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC12&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC13&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC14&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC15&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC16&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC17&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC18&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC19&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC20&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC21&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC22&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TC\TC23&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   
+   [&quot;Commands\Эл. счетчик&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TIT\TIT0&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TIT\TIT1&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TIT\TIT2&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TIT\TIT3&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TIT\TIT4&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;TIT\TIT5&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   
+   [&quot;Commands\Управление&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;Commands\Охрана\Охрана внеш.&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;Commands\Охрана\Охрана внут.&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;Commands\Блокировка ПВ&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   [&quot;Commands\Блокировка ночного&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   
+  end;              
+
+end;
+procedure &lt;Command_37/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+begin
+ SetOtvResult(DriverData.result);
+ if DriverData.result=0 then
+  begin
+  
+   [&quot;Commands\Время перехода в автономный режим&quot;].newvalue:=DriverData[0]*256+DriverData[1];
+  end
+ else
+  begin
+  
+ 
+   [&quot;Commands\Время перехода в автономный режим&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+  end; 
+end;
+
+procedure &lt;Command_8/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var ss,s,m,h,d,mo,y:word;
+    
+begin
+ SetOtvResult(DriverData.result);
+ if DriverData.result=0 then
+  begin
+   
+   s:=DriverData[0];
+   m:=DriverData[1];
+   h:=DriverData[2];
+   d:=DriverData[3];
+   mo:=DriverData[4];
+   y:=DriverData[6]+2000;
+   try
+    [&quot;Commands\Дата и время&quot;].newvalue:=EncodeDate(y,mo,d);
+    [&quot;Commands\Дата и время&quot;].newvalue:=[&quot;Commands\Дата и время&quot;].newvalue+EncodeTime(h,m,s,ss);
+   except
+    [&quot;Commands\Дата и время&quot;].newquality:=OPC_QUALITY_BAD; 
+   end; 
+  end
+ else begin
+  
+ 
+   [&quot;Commands\Дата и время&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   
+  end;   
+
+end;
+
+
+procedure &lt;Время перехода в авт. режим/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_37&quot;].count:=1;
+ [&quot;Command_37&quot;].run;
+end;
+
+
+procedure &lt;Время перехода в авт. режим/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+var w:word;
+begin
+ [&quot;Command_34&quot;].count:=2;
+ w:=[&quot;Commands\Время перехода в автономный режим&quot;].vqt.value;
+ [&quot;Command_34&quot;][0]:=byte(w shr 8);
+ [&quot;Command_34&quot;][1]:=byte(w);
+ [&quot;Command_34&quot;].run;
+
+end;
+
+
+
+
+
+procedure &lt;Command_25/&gt;OnBeforeWrite(Device:TIGDevice; Command:TIGCommand; var Cancel:boolean);
+begin
+ [&quot;Statistics\Кол-во запросов&quot;].newvalue:=[&quot;Statistics\Кол-во запросов&quot;].oldValue+1;
+end;
+
+
+procedure &lt;Command_34/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+begin
+ SetOtvResult(DriverData.result);
+ 
+end;
+
+
+
+procedure &lt;Обнулить статистику/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+begin
+  [&quot;Statistics\Кол-во запросов&quot;].newvalue:=0;
+  [&quot;Statistics\Кол-во не ответов&quot;].newvalue:=0;
+  [&quot;Statistics\Кол-во не ответов от драйвера&quot;].newvalue:=0;
+  [&quot;Statistics\Кол-во ответов&quot;].newvalue:=0;
+
+end;
+
+
+
+procedure &lt;IP address/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+var i:integer;
+begin
+ [&quot;Command_55&quot;].count:=14;
+ [&quot;Command_55&quot;][0]:=12;
+ [&quot;Command_55&quot;][1]:=0;
+ for i:=0 to 11 do
+  [&quot;Command_55&quot;][i+2]:=[&quot;Commands\Дополнительно\IP адреса&quot;].vqt.ValueAsArray[i];
+ [&quot;Command_55&quot;].run;
+   
+
+end;
+
+procedure &lt;IP address/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_15&quot;].count:=3;
+ [&quot;Command_15&quot;][0]:=12;
+ [&quot;Command_15&quot;][1]:=$60;
+ [&quot;Command_15&quot;][2]:=$03;
+ [&quot;Command_15&quot;].run;
+
+end;
+
+procedure &lt;Command_15/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var d:word;
+    i:integer;
+begin
+ SetOtvResult(DriverData.result);
+ if DriverData.result=0 then
+  begin
+   
+   d:=DriverData[2];
+   d:=d shl 8;
+   d:=d or DriverData[1];
+   case d of
+    $0360:begin
+           for i:=3 to DriverData.Count-1 do
+           [&quot;Commands\Дополнительно\IP адреса&quot;].newvalueasarray[i-3]:=DriverData[i];
+           
+          end;
+    $036C:begin
+           [&quot;Commands\Дополнительно\Номер порта TCP&quot;].newvalue:=makeword(DriverData[3],DriverData[4]);
+          end;
+    $0357:begin
+           [&quot;Работа с EEPROM\No PDP context&quot;].newvalue:=DriverData[3];
+
+          end;      
+    $0329:begin
+           [&quot;Работа с EEPROM\Байт конфигурации&quot;].newvalue:=DriverData[3];
+
+          end;  
+    $036F:[&quot;Commands\Дополнительно\Индекс IP адреса&quot;].newvalue:=DriverData[3];
+    $0354:[&quot;Commands\Дополнительно\Режим двойной SIM карты&quot;].newvalue:=DriverData[3]=1;
+    $0356:[&quot;Commands\Дополнительно\Кол-во пересбросов&quot;].newvalue:=makeword(DriverData[3],DriverData[4]);             
+   end; 
+  end
+ else
+  begin
+   d:=Command[2];
+   d:=d shl 8;
+   d:=d or Command[1];
+   case d of
+    $0360:[&quot;Commands\Дополнительно\IP адреса&quot;].newquality:=opc_quality_bad;
+    $036C:[&quot;Commands\Дополнительно\Номер порта TCP&quot;].newquality:=opc_quality_bad;
+    $0357:[&quot;Работа с EEPROM\No PDP context&quot;].newquality:=opc_quality_bad;
+    $0329:[&quot;Работа с EEPROM\Байт конфигурации&quot;].newquality:=opc_quality_bad;
+    $036F:[&quot;Commands\Дополнительно\Индекс IP адреса&quot;].newquality:=opc_quality_bad;
+    $0354:[&quot;Commands\Дополнительно\Режим двойной SIM карты&quot;].newquality:=opc_quality_bad;
+    $0356:[&quot;Commands\Дополнительно\Кол-во пересбросов&quot;].newquality:=opc_quality_bad;
+   end;                  
+   
+  end;  
+end;
+
+procedure &lt;Номер порта/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_15&quot;].count:=3;
+ [&quot;Command_15&quot;][0]:=2;
+ [&quot;Command_15&quot;][1]:=$6C;
+ [&quot;Command_15&quot;][2]:=$03;
+ [&quot;Command_15&quot;].run;
+end;
+
+procedure &lt;No PDP context/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_15&quot;].count:=3;
+ [&quot;Command_15&quot;][0]:=1;
+ [&quot;Command_15&quot;][1]:=$57;
+ [&quot;Command_15&quot;][2]:=$03;
+ [&quot;Command_15&quot;].run;
+end;
+
+procedure &lt;No PDP context/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+begin
+ [&quot;Command_14&quot;].count:=4;
+ [&quot;Command_14&quot;][0]:=1;
+ [&quot;Command_14&quot;][1]:=$57;
+ [&quot;Command_14&quot;][2]:=$03;
+ 
+ [&quot;Command_14&quot;][3]:=[&quot;Работа с EEPROM\No PDP context&quot;].vqt.value;
+ 
+ 
+ [&quot;Command_14&quot;].run;
+end;
+
+procedure &lt;Номер порта/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+var d:word;
+begin
+ [&quot;Command_55&quot;].count:=5;
+ [&quot;Command_55&quot;][0]:=2;
+ [&quot;Command_55&quot;][1]:=12;
+ 
+ d:=[&quot;Commands\Дополнительно\Номер порта TCP&quot;].vqt.value;
+ [&quot;Command_55&quot;][2]:=byte(d);
+ [&quot;Command_55&quot;][3]:=byte(d shr 8);
+ [&quot;Command_55&quot;].run;
+end;
+
+procedure &lt;Сбросить контроллер/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+begin
+ if [&quot;Работа с EEPROM\Сбросить контроллер&quot;].vqt.value then
+  begin
+   [&quot;Command_50&quot;].count:=1;
+   [&quot;Command_50&quot;][0]:=2;
+   [&quot;Command_50&quot;].run;
+   
+   
+
+  end;
+
+end;
+
+procedure &lt;Тест канала/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+[&quot;команда теста канала&quot;].count:=1;
+[&quot;команда теста канала&quot;].run;
+
+
+end;
+
+
+
+procedure &lt;Байт конфигурации/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_15&quot;].count:=3;
+ [&quot;Command_15&quot;][0]:=1;
+ [&quot;Command_15&quot;][1]:=$29;
+ [&quot;Command_15&quot;][2]:=$03;
+ [&quot;Command_15&quot;].run;
+end;
+
+procedure &lt;Байт конфигурации/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+begin
+ [&quot;Command_14&quot;].count:=4;
+ [&quot;Command_14&quot;][0]:=1;
+ [&quot;Command_14&quot;][1]:=$29;
+ [&quot;Command_14&quot;][2]:=$03;
+ 
+ [&quot;Command_14&quot;][3]:=[&quot;Работа с EEPROM\Байт конфигурации&quot;].vqt.value;
+ 
+ 
+ [&quot;Command_14&quot;].run;
+end;
+
+procedure &lt;Command_100/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var d,mo,y:word;
+    str:string;
+    sd:TDateTime;
+begin
+ SetOtvResult(DriverData.result);
+ if DriverData.result=0 then
+  begin
+   str:='Версия: '+inttostr(DriverData[0])+' Build: '+inttostr(DriverData[1]);
+   d:=DriverData[2];
+   mo:=DriverData[3];
+   y:=DriverData[4]+2000;
+   try
+    sd:=EncodeDate(y,mo,d);
+    str:=str+' Дата: '+DateToStr(sd);
+    [&quot;Commands\Дополнительно\Версия прошивки&quot;].newvalue:=str; 
+   except
+   [&quot;Commands\Дополнительно\Версия прошивки&quot;].newquality:=opc_quality_bad; 
+   end; 
+  end
+ else
+  begin
+   [&quot;Commands\Дополнительно\Версия прошивки&quot;].NewQuality:=opc_quality_bad;
+  end;   
+
+
+end;
+
+procedure &lt;Версия прошивки/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_100&quot;].count:=1;
+ [&quot;Command_100&quot;].run;
+end;
+
+procedure &lt;ShortSost/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+// [&quot;Command_25&quot;].run;
+end;
+
+
+
+procedure &lt;Заблокирован/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+begin
+ [&quot;Command_35&quot;].count:=1;
+ if [&quot;Commands\Блокировка ночного&quot;].VQT.Value then 
+  [&quot;Command_35&quot;][0]:=0
+ else
+  [&quot;Command_35&quot;][0]:=1; 
+
+ [&quot;Command_35&quot;].run;
+end;
+
+
+
+procedure &lt;Режим освещения/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+begin
+ [&quot;Command_13&quot;].count:=1;
+ case [&quot;Режим освещения&quot;].VQT.Value of
+  1:[&quot;Command_13&quot;][0]:=$3;
+  2:[&quot;Command_13&quot;][0]:=$1;
+  3:[&quot;Command_13&quot;][0]:=$0;
+ end; 
+ [&quot;Command_13&quot;].run;
+end;
+
+
+procedure &lt;Command_32/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var str:string;
+    
+begin
+ SetOtvResult(DriverData.result);
+ if DriverData.result=0 then
+  begin
+   str:='График на: '+inttostr(DriverData[2])+'.'+inttostr(DriverData[1])+' ';
+   str:=str+'Веч. '+inttostr(DriverData[3])+':'+inttostr(DriverData[4])+' ';
+   str:=str+'Откл. '+inttostr(DriverData[6])+':'+inttostr(DriverData[7])+' ';
+   str:=str+'Ноч. '+inttostr(DriverData[9])+':'+inttostr(DriverData[10])+' ';
+   [&quot;Работа с графиком\График&quot;].NewValue:=str;
+  end
+ else
+  begin
+  [&quot;Работа с графиком\График&quot;].NewQuality:=opc_quality_bad;
+  end;   
+
+end;
+
+procedure &lt;Дата графика/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+var d,mo,y:word;
+   
+    sd:TDateTime;
+begin
+ sd:=[&quot;Работа с графиком\Дата графика&quot;].VQT.Value;
+ try
+  DecodeDate(sd,y,mo,d);
+  [&quot;Command_32&quot;].count:=3;
+  [&quot;Command_32&quot;][1]:=d;
+  [&quot;Command_32&quot;][2]:=mo;
+  [&quot;Command_32&quot;].run;
+  [&quot;Работа с графиком\Дата графика&quot;].NewValue:=sd;
+ except
+  [&quot;Работа с графиком\Дата графика&quot;].NewQuality:=opc_quality_bad;
+ end;  
+end;
+
+
+
+procedure &lt;Template/&gt;OnActivateDevice(Device:TIGDevice);
+var i:integer;
+begin
+
+ [&quot;Имя шаблона&quot;].NewValue:=Device.TemplateName;
+ for i:=0 to [&quot;Commands\Дополнительно\Ключ1&quot;].OldValueAsArrayCount-1 do
+  [&quot;CommandLoadKey&quot;][i]:=[&quot;Commands\Дополнительно\Ключ1&quot;].OldValueAsArray[i];
+ [&quot;CommandLoadKey&quot;].Run; 
+ 
+
+end;
+
+procedure &lt;Блокировка ПВ/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+begin
+ [&quot;Command_35&quot;].count:=1;
+ if [&quot;Commands\Блокировка ПВ&quot;].VQT.Value then 
+  [&quot;Command_35&quot;][0]:=0
+ else
+  [&quot;Command_35&quot;][0]:=1; 
+
+ [&quot;Command_35&quot;].run;
+end;
+
+procedure &lt;Управление/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+begin
+ [&quot;Command_13&quot;].count:=1;
+ case [&quot;Commands\Управление&quot;].VQT.Value of
+  0:[&quot;Command_13&quot;][0]:=$3;
+  1:[&quot;Command_13&quot;][0]:=$1;
+  2:[&quot;Command_13&quot;][0]:=$0;
+ end; 
+ [&quot;Command_13&quot;].run;
+end;
+
+procedure &lt;Блокировка ночного/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+begin
+ [&quot;Command_33&quot;].count:=1;  
+
+ if [&quot;Commands\Блокировка ночного&quot;].VQT.Value then 
+  [&quot;Command_33&quot;][0]:=1
+ else
+  [&quot;Command_33&quot;][0]:=0; 
+
+ [&quot;Command_33&quot;].run;
+
+end;
+
+
+
+procedure &lt;Timer/&gt;OnTimer(Device:TIGDevice; Timer:TIGTimer);
+begin
+ [&quot;Command_27&quot;].run;
+end;
+
+procedure &lt;Ключ1/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+var i:integer;
+begin
+ [&quot;CommandLoadKey&quot;].Count:=[&quot;Commands\Дополнительно\Ключ1&quot;].VQT.ValueAsArrayCount;
+ for i:=0 to [&quot;CommandLoadKey&quot;].Count-1 do 
+  begin
+   [&quot;Commands\Дополнительно\Ключ1&quot;].NewValueAsArray[i]:=[&quot;Commands\Дополнительно\Ключ1&quot;].VQT.ValueAsArray[i];
+   [&quot;CommandLoadKey&quot;][i]:=[&quot;Commands\Дополнительно\Ключ1&quot;].NewValueAsArray[i];
+  end;
+ [&quot;CommandLoadKey&quot;].Run; 
+  
+end;
+
+procedure &lt;Индекс IP адреса/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_15&quot;].count:=3;
+ [&quot;Command_15&quot;][0]:=1;
+ [&quot;Command_15&quot;][1]:=$6F;
+ [&quot;Command_15&quot;][2]:=$03;
+ [&quot;Command_15&quot;].run;
+end;
+
+procedure &lt;Индекс IP адреса/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+begin
+ [&quot;Command_14&quot;].count:=4;
+ [&quot;Command_14&quot;][0]:=1;
+ [&quot;Command_14&quot;][1]:=$6F;
+ [&quot;Command_14&quot;][2]:=$03;
+ [&quot;Command_14&quot;][3]:=[&quot;Commands\Дополнительно\Индекс IP адреса&quot;].vqt.value;
+ [&quot;Command_14&quot;].run;
+end;
+
+procedure &lt;Режим двойной SIM карты/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_15&quot;].count:=3;
+ [&quot;Command_15&quot;][0]:=1;
+ [&quot;Command_15&quot;][1]:=$54;
+ [&quot;Command_15&quot;][2]:=$03;
+ [&quot;Command_15&quot;].run;
+end;
+
+procedure &lt;Режим двойной SIM карты/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+begin
+ [&quot;Command_14&quot;].count:=4;
+ [&quot;Command_14&quot;][0]:=1;
+ [&quot;Command_14&quot;][1]:=$54;
+ [&quot;Command_14&quot;][2]:=$03;
+ [&quot;Command_14&quot;][3]:=[&quot;Commands\Дополнительно\Режим двойной SIM карты&quot;].vqt.value;
+ [&quot;Command_14&quot;].run;
+end;
+
+procedure &lt;Перезагрузить контроллер/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+begin
+ if [&quot;Commands\Дополнительно\Перезагрузить контроллер&quot;].vqt.value then
+  [&quot;Сброс контроллера_56&quot;].run;
+
+
+end;
+
+procedure &lt;Кол-во пересбросов/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_15&quot;].count:=3;
+ [&quot;Command_15&quot;][0]:=2;
+ [&quot;Command_15&quot;][1]:=$56;
+ [&quot;Command_15&quot;][2]:=$03;
+ [&quot;Command_15&quot;].run;
+end;
+
+procedure &lt;Статистика связи/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var d:dword;
+begin
+ if DriverData.Count=0 then exit;
+ d:=MakeLong(MakeWord(DriverData[1],DriverData[2]),MakeWord(DriverData[3],DriverData[4]));
+ if DriverData[0]=0 then
+  [&quot;Commands\Статистика\Передано байт&quot;].NewValue:=[&quot;Commands\Статистика\Передано байт&quot;].OldValue+d
+ else
+  [&quot;Commands\Статистика\Принято байт&quot;].NewValue:=[&quot;Commands\Статистика\Принято байт&quot;].OldValue+d;
+ [&quot;Commands\Статистика\Всего байт&quot;].NewValue:=[&quot;Commands\Статистика\Принято байт&quot;].NewValue+[&quot;Commands\Статистика\Передано байт&quot;].NewValue;
+
+
+end;
+
+begin
+
+end."><T10 OID="1000" Name="Template" DateCreate="10.03.2006 11:41:58" DateLastUpdate="17.02.2007 10:01:48" Description="Шаблон для АРМ &quot;Горсвет&quot;" CompileID="167" OnActivateDevice="&lt;Template/&gt;OnActivateDevice"><T20 OID="1" Name="Tags"><T50 OID="1023" Name="Commands"><T120 OID="1025" Name="Управление" DataType="17" Readable="True" Writeable="True" OnRead="&lt;Состояние/&gt;OnRead" OnWrite="&lt;Управление/&gt;OnWrite"><T145 OID="1034" OIDLink="1033" Value="03000200000002000000"/><T145 OID="1035" OIDLink="1026" Value="08200300000008000000CEF2EAEBFEF7E5ED06000000CDEEF7EDEEE908000000C2E5F7E5F0EDE8E9"/><T145 OID="1052" OIDLink="1051" Value="08000F000000D0E5E6E8EC20EEF1E2E5F9E5EDE8FF"/><T145 OID="1058" OIDLink="1057" Value="03000200000002000000"/></T120><T50 OID="1024" Name="Охрана"><T120 OID="7" Name="Охрана внеш." DataType="17" Readable="true" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""><T145 OID="1039" OIDLink="1026" Value="0820030000000F000000C2E7FFF220EFEEE420EEF5F0E0EDF30D000000D1EDFFF220F120EEF5F0E0EDFB07000000D2F0E5E2EEE3E0"/><T145 OID="1040" OIDLink="1033" Value="03000200000002000000"/><T145 OID="1065" OIDLink="1057" Value="03000200000002000000"/></T120><T120 OID="8" Name="Охрана внут." DataType="17" Readable="true" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""><T145 OID="1042" OIDLink="1026" Value="0820030000000F000000C2E7FFF220EFEEE420EEF5F0E0EDF30D000000D1EDFFF220F120EEF5F0E0EDFB07000000D2F0E5E2EEE3E0"/><T145 OID="1043" OIDLink="1033" Value="03000200000002000000"/><T145 OID="1066" OIDLink="1057" Value="03000200000002000000"/></T120></T50><T120 OID="1007" Name="Блокировка ПВ" DataType="11" Readable="True" Writeable="True" OnRead="&lt;Состояние/&gt;OnRead" OnWrite="&lt;Блокировка ПВ/&gt;OnWrite"><T145 OID="1037" OIDLink="1026" Value="0820020000000D000000D0E0E7E1EBEEEAE8F0EEE2E0ED0C000000C7E0E1EBEEEAE8F0EEE2E0ED"/><T145 OID="1038" OIDLink="1033" Value="03000200000002000000"/><T145 OID="1059" OIDLink="1057" Value="03000200000002000000"/></T120><T120 OID="53" Name="Дата и время" DataType="7" Readable="True" Writeable="true" OnRead="&lt;Дата и время/&gt;OnRead" OnWrite="&lt;Дата и время/&gt;OnWrite" OnCalc=""><T145 OID="1056" OIDLink="1051" Value="080012000000C4E0F2E020E820E2F0E5ECFF20EDE020CFC2"/><T145 OID="1060" OIDLink="1057" Value="03000300000002000000"/></T120><T120 OID="35" Name="Эл. счетчик" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Состояние/&gt;OnRead" OnWrite="&lt;Эл. счетчик/&gt;OnWrite"><T145 OID="1053" OIDLink="1050" Value="080005000000C2F22FF72E"/><T145 OID="1062" OIDLink="1057" Value="03000300000002000000"/></T120><T120 OID="49" Name="Время перехода в автономный режим" DataType="18" Readable="true" Writeable="True" OnRead="&lt;Время перехода в авт. режим/&gt;OnRead" OnWrite="&lt;Время перехода в авт. режим/&gt;OnWrite"><T145 OID="1054" OIDLink="1050" Value="080004000000F1E5EA2E"/><T145 OID="1063" OIDLink="1057" Value="03000300000002000000"/></T120><T120 OID="1044" Name="Блокировка ночного" DataType="11" Readable="True" Writeable="True" OnRead="&lt;Состояние/&gt;OnRead" OnWrite="&lt;Блокировка ночного/&gt;OnWrite"><T145 OID="1046" OIDLink="1026" Value="0820020000000D000000D0E0E7E1EBEEEAE8F0EEE2E0ED0C000000C7E0E1EBEEEAE8F0EEE2E0ED"/><T145 OID="1047" OIDLink="1033" Value="03000200000002000000"/><T145 OID="1055" OIDLink="1051" Value="080000000000"/><T145 OID="1064" OIDLink="1057" Value="03000300000002000000"/></T120><T50 OID="1076" Name="Дополнительно"><T120 OID="1004" Name="Версия прошивки" DataType="8" Readable="True" Writeable="False" OnRead="&lt;Версия прошивки/&gt;OnRead" OnWrite=""><T145 OID="1061" OIDLink="1057" Value="03000100000002000000"/></T120><T120 OID="73" Name="Номер порта TCP" DataType="18" Readable="True" Writeable="True" OnRead="&lt;Номер порта/&gt;OnRead" OnWrite="&lt;Номер порта/&gt;OnWrite"><T145 OID="1072" OIDLink="1051" Value="08002C000000CDEEECE5F020EFEEF0F2E020EDE020EAEEF2EEF0FBE920EDE0F1F2F0EEE5EDFB20EAEEEDF2F0EEEBEBE5F0FB"/><T145 OID="1073" OIDLink="1057" Value="03000300000002000000"/></T120><T120 OID="1068" Name="Ключ1" DataType="8209" Readable="True" Writeable="True" OnRead="" OnWrite="&lt;Ключ1/&gt;OnWrite" Saved="True"><T145 OID="1074" OIDLink="1057" Value="03000300000002000000"/><T145 OID="1075" OIDLink="1051" Value="08002D000000CAEBFEF720E4EBFF20F8E8F4F0E0F6E8E820EFE0EAE5F2EEE220EFEE205443502F495020EFF0EEF2EEEAEEEBF3"/></T120><T120 OID="72" Name="IP адреса" DataType="8209" Readable="True" Writeable="True" OnRead="&lt;IP address/&gt;OnRead" OnWrite="&lt;IP address/&gt;OnWrite"><T145 OID="1077" OIDLink="1051" Value="080020000000D1EFE8F1EEEA20F2F0E5F520E4EEF1F2F3EFEDFBF520495020E0E4F0E5F1EEE2"/><T145 OID="1078" OIDLink="1057" Value="03000300000002000000"/></T120><T120 OID="1079" Name="Перезагрузить контроллер" DataType="11" Readable="False" Writeable="True" OnRead="" OnWrite="&lt;Перезагрузить контроллер/&gt;OnWrite"><T145 OID="1089" OIDLink="1057" Value="03000200000002000000"/><T145 OID="1090" OIDLink="1051" Value="080018000000CFE5F0E5E7E0E3F0F3E7E8F2FC20EAEEEDF2F0EEEBEBE5F0"/></T120><T120 OID="1080" Name="Индекс IP адреса" DataType="17" Readable="True" Writeable="True" OnRead="&lt;Индекс IP адреса/&gt;OnRead" OnWrite="&lt;Индекс IP адреса/&gt;OnWrite"><T145 OID="1081" OIDLink="1051" Value="08002D000000D2E5EAF3F9E8E920E8EDE4E5EAF120495020E0E4F0E5F1E020E220ECE0F1F1E8E2E520495020E0E4F0E5F1EEE2"/><T145 OID="1082" OIDLink="1057" Value="03000300000002000000"/></T120><T120 OID="1083" Name="Режим двойной SIM карты" DataType="11" Readable="True" Writeable="True" OnRead="&lt;Режим двойной SIM карты/&gt;OnRead" OnWrite="&lt;Режим двойной SIM карты/&gt;OnWrite"><T145 OID="1084" OIDLink="1026" Value="08200200000008000000D0E0E7F0E5F8E5ED08000000C7E0EFF0E5F9E5ED"/><T145 OID="1085" OIDLink="1033" Value="03000200000002000000"/><T145 OID="1086" OIDLink="1051" Value="080000000000"/><T145 OID="1087" OIDLink="1057" Value="03000300000002000000"/></T120><T120 OID="1091" Name="Кол-во пересбросов" DataType="18" Readable="True" Writeable="False" OnRead="&lt;Кол-во пересбросов/&gt;OnRead" OnWrite=""><T145 OID="1092" OIDLink="1057" Value="03000100000002000000"/><T145 OID="1093" OIDLink="1051" Value="080030000000CAEEEB2DE2EE20EFE5F0E5F1E1F0EEF1EEE220ECEEE4E5ECE020E8E72DE7E020EEF2F1F3F2F1F2E2E8FF20F1E2FFE7E8"/></T120></T50><T50 OID="1094" Name="Статистика"><T120 OID="1095" Name="Передано байт" DataType="19" Readable="True" Writeable="False" OnRead="" OnWrite=""><T145 OID="1098" OIDLink="1051" Value="08001E000000CAEEEB2DE2EE20EFEEE4E0EDEDFBF520E4F0E0E9E2E5F0EEEC20E1E0E9F2"/><T145 OID="1099" OIDLink="1057" Value="03000100000002000000"/></T120><T120 OID="1096" Name="Принято байт" DataType="19" Readable="True" Writeable="False" OnRead="" OnWrite=""><T145 OID="1100" OIDLink="1051" Value="08001E000000CAEEEB2DE2EE20EFF0E8EDFFF2FBF520E4F0E0E9E2E5F0EEEC20E1E0E9F2"/><T145 OID="1101" OIDLink="1057" Value="03000100000002000000"/></T120><T120 OID="1102" Name="Всего байт" DataType="19" Readable="True" Writeable="False" OnRead="" OnWrite=""><T145 OID="1103" OIDLink="1051" Value="080022000000D1F3ECECE020EFE5F0E5E4E0EDEDFBF520E820EFEEEBF3F7E5EDEDFBF520E1E0E9F2"/><T145 OID="1104" OIDLink="1057" Value="03000100000002000000"/></T120></T50></T50><T50 OID="1014" Name="Setup"><T50 OID="1015" Name="Общие"><T50 OID="1019" Name="Прочие настройки"><T120 OID="1020" Name="Tag" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite=""/><T120 OID="1021" Name="Tag1" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite=""/><T120 OID="1022" Name="Tag2" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite=""/></T50><T120 OID="1017" Name="Адрес" DataType="8" Readable="True" Writeable="True" OnRead="" OnWrite=""/><T120 OID="1016" Name="Наименование" DataType="8" Readable="True" Writeable="True" OnRead="" OnWrite=""/><T120 OID="1018" Name="Район" DataType="8" Readable="True" Writeable="True" OnRead="" OnWrite=""/></T50><T120 OID="1048" Name="Маршрут" DataType="8" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/></T50><T50 OID="60" Name="Statistics"><T120 OID="81" Name="FlagOldResult" DataType="17" Readable="True" Writeable="False" OnRead="" OnWrite=""/><T120 OID="56" Name="Кол-во запросов" DataType="19" Readable="True" Writeable="True" OnRead="" OnWrite=""/><T120 OID="58" Name="Кол-во не ответов" DataType="19" Readable="True" Writeable="True" OnRead="" OnWrite=""/><T120 OID="61" Name="Кол-во не ответов от драйвера" DataType="19" Readable="True" Writeable="True" OnRead="" OnWrite=""/><T120 OID="57" Name="Кол-во ответов" DataType="19" Readable="True" Writeable="False" OnRead="" OnWrite=""/><T120 OID="1001" Name="Кол-во принятых 27 команд" DataType="19" Readable="True" Writeable="True" OnRead="" OnWrite=""/><T120 OID="80" Name="Не ответы по времени" DataType="8199" Readable="True" Writeable="True" OnRead="" OnWrite=""/><T120 OID="64" Name="Обнулить статистику" DataType="11" Readable="True" Writeable="True" OnRead="" OnWrite="&lt;Обнулить статистику/&gt;OnWrite"/><T120 OID="78" Name="Тест канала" DataType="17" Readable="True" Writeable="True" OnRead="&lt;Тест канала/&gt;OnRead" OnWrite=""/></T50><T50 OID="10" Name="TC"><T120 OID="11" Name="TC0" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="12" Name="TC1" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="21" Name="TC10" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="22" Name="TC11" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="23" Name="TC12" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="24" Name="TC13" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="25" Name="TC14" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="26" Name="TC15" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="27" Name="TC16" DataType="11" Readable="true" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="28" Name="TC17" DataType="11" Readable="true" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="29" Name="TC18" DataType="11" Readable="true" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="30" Name="TC19" DataType="11" Readable="true" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="13" Name="TC2" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="31" Name="TC20" DataType="11" Readable="true" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="32" Name="TC21" DataType="11" Readable="true" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="33" Name="TC22" DataType="11" Readable="true" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="34" Name="TC23" DataType="11" Readable="true" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="14" Name="TC3" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="15" Name="TC4" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="16" Name="TC5" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="17" Name="TC6" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="18" Name="TC7" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="19" Name="TC8" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="20" Name="TC9" DataType="11" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/></T50><T50 OID="37" Name="TIT"><T120 OID="38" Name="TIT0" DataType="18" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="39" Name="TIT1" DataType="18" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="40" Name="TIT2" DataType="18" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="41" Name="TIT3" DataType="18" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="42" Name="TIT4" DataType="18" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="43" Name="TIT5" DataType="18" Readable="True" Writeable="False" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/></T50><T50 OID="66" Name="Работа с EEPROM"><T120 OID="74" Name="No PDP context" DataType="17" Readable="True" Writeable="True" OnRead="&lt;No PDP context/&gt;OnRead" OnWrite="&lt;No PDP context/&gt;OnWrite"/><T120 OID="1002" Name="Байт конфигурации" DataType="17" Readable="True" Writeable="True" OnRead="&lt;Байт конфигурации/&gt;OnRead" OnWrite="&lt;Байт конфигурации/&gt;OnWrite"/><T120 OID="77" Name="Сбросить контроллер" DataType="11" Readable="True" Writeable="True" OnRead="" OnWrite="&lt;Сбросить контроллер/&gt;OnWrite"/></T50><T50 OID="1010" Name="Работа с графиком"><T120 OID="1012" Name="График" DataType="8" Readable="True" Writeable="False" OnRead="" OnWrite=""/><T120 OID="1011" Name="Дата графика" DataType="7" Readable="True" Writeable="True" OnRead="" OnWrite="&lt;Дата графика/&gt;OnWrite"/></T50><T120 OID="1006" Name="ShortSost" DataType="19" Readable="True" Writeable="True" OnRead="&lt;ShortSost/&gt;OnRead" OnWrite=""/><T120 OID="59" Name="Команда 27 подавалась" DataType="11" Readable="True" Writeable="False" OnRead="" OnWrite=""/><T120 OID="1009" Name="Режим освещения" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="&lt;Режим освещения/&gt;OnWrite"/><T120 OID="4" Name="Состояние" DataType="17" Readable="true" Writeable="true" OnRead="&lt;Состояние/&gt;OnRead" OnWrite=""/><T120 OID="1041" Name="ShortSost1" DataType="19" Readable="True" Writeable="True" OnRead="" OnWrite=""/><T120 OID="1049" Name="Имя шаблона" DataType="8" Readable="True" Writeable="False" OnRead="" OnWrite=""/></T20><T25 OID="2" Name="Properties"><T125 OID="1026" Name="EUInfo" DataType="8200" PropID="8"/><T125 OID="1033" Name="EUType" DataType="3" PropID="7"/><T125 OID="47" Name="Тэг состояния контроллера" PropID="5000" DataType="11"/><T125 OID="1050" Name="EUUnits" DataType="8" PropID="100"/><T125 OID="1051" Name="ItemDescription" DataType="8" PropID="101"/><T125 OID="1057" Name="Флаги для панели команд" DataType="17" PropID="5001"/></T25><T30 OID="3" Name="Commands"><T130 OID="54" Name="Command_7" NoCommand="7" CountWriteBytes="7" CountReadBytes="1" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="52" Name="Command_8" NoCommand="8" CountWriteBytes="0" CountReadBytes="7" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_8/&gt;OnAfterRead"/><T130 OID="62" Name="Command_13" NoCommand="13" CountWriteBytes="1" CountReadBytes="1" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="75" Name="Command_14" NoCommand="14" CountWriteBytes="0" CountReadBytes="0" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="65" Name="Command_15" NoCommand="15" CountWriteBytes="0" CountReadBytes="0" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_15/&gt;OnAfterRead" Priority="23"/><T130 OID="9" Name="Command_20" NoCommand="20" CountWriteBytes="1" CountReadBytes="0" OnBeforeWrite="" OnAfterRead=""/><T130 OID="6" Name="Command_27" NoCommand="27" CountWriteBytes="1" CountReadBytes="17" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_27/&gt;OnAfterRead" Priority="1500"/><T130 OID="1013" Name="Command_32" NoCommand="32" CountWriteBytes="3" CountReadBytes="13" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_32/&gt;OnAfterRead"/><T130 OID="1027" Name="Command_33" NoCommand="33" CountWriteBytes="1" CountReadBytes="13" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead=""/><T130 OID="51" Name="Command_34" NoCommand="34" CountWriteBytes="2" CountReadBytes="1" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="1008" Name="Command_35" NoCommand="35" CountWriteBytes="1" CountReadBytes="1" OnBeforeWrite="" OnAfterRead=""/><T130 OID="36" Name="Command_36" NoCommand="36" CountWriteBytes="5" CountReadBytes="1" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="50" Name="Command_37" NoCommand="37" CountWriteBytes="1" CountReadBytes="2" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_37/&gt;OnAfterRead"/><T130 OID="1028" Name="Command_44" NoCommand="44" CountWriteBytes="1" CountReadBytes="1" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="1029" Name="Command_45" NoCommand="45" CountWriteBytes="1" CountReadBytes="1" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="1030" Name="Command_46" NoCommand="46" CountWriteBytes="1" CountReadBytes="1" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="1031" Name="Command_47" NoCommand="47" CountWriteBytes="1" CountReadBytes="1" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="1032" Name="Command_48" NoCommand="48" CountWriteBytes="1" CountReadBytes="1" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="76" Name="Command_50" NoCommand="50" CountWriteBytes="0" CountReadBytes="0" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="1071" Name="Command_55" NoCommand="55" CountWriteBytes="0" CountReadBytes="0" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="1005" Name="Command_100" NoCommand="100" CountWriteBytes="1" CountReadBytes="5" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_100/&gt;OnAfterRead"/><T130 OID="79" Name="команда теста канала" NoCommand="300" CountWriteBytes="0" CountReadBytes="0" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="1067" Name="CommandLoadKey" NoCommand="_" CountWriteBytes="16" Param="0" OnBeforeWrite="" OnAfterRead=""/><T130 OID="1088" Name="Сброс контроллера_56" NoCommand="56" CountWriteBytes="1" CountReadBytes="0" OnBeforeWrite="&lt;Command_25/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_34/&gt;OnAfterRead"/><T130 OID="1097" Name="Статистика связи" NoCommand="_1" CountWriteBytes="0" Param="0" OnBeforeWrite="" OnAfterRead="&lt;Статистика связи/&gt;OnAfterRead"/></T30><T38 OID="1069" Name="Timers"><T138 OID="1070" Name="Timer" Enabled="True" Interval="300000" OnTimer="&lt;Timer/&gt;OnTimer"/></T38></T10></Header>

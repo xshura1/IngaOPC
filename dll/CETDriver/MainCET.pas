@@ -1,0 +1,517 @@
+unit MainCET;   // для счетчиков СЭТ
+
+interface
+ uses  SysUtils, Classes,  windows,  Dialogs,inifiles, intf;
+ type
+  TBuff=array [0..255] of byte;
+
+  TComPort=class
+   private
+    { Private declarations }
+    fCountWrite:integer;
+    fInModem:boolean;
+    fEnableLog:boolean;
+
+    fListResult:TList;
+
+    fPasswordsList:TList;
+
+
+    function CalcCRC(Arr:TBuff; fi, Len:cardinal):word;
+   // function CalcCRC1(Arr:TBuff; fi,Len:cardinal):word;
+
+
+    procedure SetAddrAndNoCommand(Addr,NoCommand:string; var Buff:TBuff; out fiCRC, Size:dword);
+
+    procedure AddPassword(Addr,Pass:string);
+    function SearchPassword(Addr:string; var Pass:string):boolean;
+    procedure ClearPasswordsList;
+
+    procedure SetLog(IsWrite:boolean; Buff:TBuff; Count:dword);
+   public
+    constructor Create;
+    Destructor Destroy; override;
+    function OpenPort:HResult;
+    function ClosePort:HResult;
+    procedure ResetPort;
+
+
+    function Write(ppDriverData:pDriverData):HResult;
+    function Read(out ppDriverData:pDriverData):HResult;
+
+
+
+
+   end;
+
+
+
+
+ var Co:TComPort;
+     IniName:shortstring;
+implementation
+ uses ActiveX,comobj;
+
+ type
+ PPasswordItem=^TPasswordItem;
+ TPasswordItem=record
+  Addr:widestring;
+  Pass:widestring;
+ end;
+
+
+
+
+function GetModuleFileNameStr(Instance: THandle; FullPath:boolean): String;
+var
+  buffer : array [0..MAX_PATH] of Char;
+  i:integer;
+  s:string;
+begin
+  GetModuleFileName( Instance, buffer, MAX_PATH);
+  s := buffer;
+  result:=s;
+  if FullPath then exit;
+  result:='';
+  for i:=length(s) downto 1 do
+   if s[i]<>'\' then
+    result:=s[i]+result
+   else
+    break;
+
+end;
+
+
+
+
+function TComPort.ClosePort:HResult;
+begin
+  ClearPasswordsList;
+  result:=s_ok;
+end;
+
+constructor TComPort.Create;
+begin
+ inherited;
+ fListResult:=TList.Create;
+ fPasswordsList:=TList.Create;
+ ResetPort;
+end;
+
+destructor TComPort.Destroy;
+begin
+  ClosePort;
+  fListResult.Free;
+  fPasswordsList.Free;
+  inherited;
+end;
+
+
+
+function TComPort.OpenPort:HResult;
+begin
+  ClearPasswordsList;
+  ResetPort;
+  result:=s_ok;
+end;
+
+
+
+
+procedure TComPort.ResetPort;
+var ini:TIniFile;
+begin
+ ini:=TIniFile.Create(IniName);
+ try
+   fCountWrite:=ini.ReadInteger('Port','CountWrite',1);
+   fInModem:=ini.ReadBool('Port','InModem',true);
+ finally
+  ini.free;
+ end;
+end;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function TComPort.CalcCRC(Arr:TBuff; fi, Len:cardinal):word;
+  const
+  CRC_Hi:array [0..255] of byte=( $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $00, $C1, $81, $40, $01, $C0, $80, $41,
+                                  $01, $C0, $80, $41, $00, $C1, $81, $40);
+
+  CRC_Lo:array [0..255] of byte=( $00, $C0, $C1, $01, $C3, $03, $02, $C2,
+                                  $C6, $06, $07, $C7, $05, $C5, $C4, $04,
+                                  $CC, $0C, $0D, $CD, $0F, $CF, $CE, $0E,
+                                  $0A, $CA, $CB, $0B, $C9, $09, $08, $C8,
+                                  $D8, $18, $19, $D9, $1B, $DB, $DA, $1A,
+                                  $1E, $DE, $DF, $1F, $DD, $1D, $1C, $DC,
+                                  $14, $D4, $D5, $15, $D7, $17, $16, $D6,
+                                  $D2, $12, $13, $D3, $11, $D1, $D0, $10,
+                                  $F0, $30, $31, $F1, $33, $F3, $F2, $32,
+                                  $36, $F6, $F7, $37, $F5, $35, $34, $F4,
+                                  $3C, $FC, $FD, $3D, $FF, $3F, $3E, $FE,
+                                  $FA, $3A, $3B, $FB, $39, $F9, $F8, $38,
+                                  $28, $E8, $E9, $29, $EB, $2B, $2A, $EA,
+                                  $EE, $2E, $2F, $EF, $2D, $ED, $EC, $2C,
+                                  $E4, $24, $25, $E5, $27, $E7, $E6, $26,
+                                  $22, $E2, $E3, $23, $E1, $21, $20, $E0,
+                                  $A0, $60, $61, $A1, $63, $A3, $A2, $62,
+                                  $66, $A6, $A7, $67, $A5, $65, $64, $A4,
+                                  $6C, $AC, $AD, $6D, $AF, $6F, $6E, $AE,
+                                  $AA, $6A, $6B, $AB, $69, $A9, $A8, $68,
+                                  $78, $B8, $B9, $79, $BB, $7B, $7A, $BA,
+                                  $BE, $7E, $7F, $BF, $7D, $BD, $BC, $7C,
+                                  $B4, $74, $75, $B5, $77, $B7, $B6, $76,
+                                  $72, $B2, $B3, $73, $B1, $71, $70, $B0,
+                                  $50, $90, $91, $51, $93, $53, $52, $92,
+                                  $96, $56, $57, $97, $55, $95, $94, $54,
+                                  $9C, $5C, $5D, $9D, $5F, $9F, $9E, $5E,
+                                  $5A, $9A, $9B, $5B, $99, $59, $58, $98,
+                                  $88, $48, $49, $89, $4B, $8B, $8A, $4A,
+                                  $4E, $8E, $8F, $4F, $8D, $4D, $4C, $8C,
+                                  $44, $84, $85, $45, $87, $47, $46, $86,
+                                  $82, $42, $43, $83, $41, $81, $80, $40 );
+  var hi,lo:byte;
+      i,index:integer;
+  begin
+   hi:=$FF; lo:=$FF;
+   for i:=fi to Len-1 do
+    begin
+     index:=hi xor Arr[i];
+     hi:=lo xor crc_hi[index];
+     lo:=crc_lo[index];
+    end;
+   result:=makeword(lo,hi);
+
+  end;
+
+
+{function TComPort.CalcCRC1(Arr: TBuff; fi, Len: cardinal): word;
+
+function UpdCRC(C : byte; oldCRC : word) : word; //  Вычисление CRC для счетчика СЭТ
+var i: byte;
+    arrCRC: array [0..1] of byte absolute oldCRC;
+begin
+  i:= arrCRC[1] xor C;
+  arrCRC[1]:= arrCRC[0] xor srCRCHi[i];
+  arrCRC[0]:= srCRCLo[i];
+  UpdCRC:=oldCRC;
+end; //  Вычисление CRC для счетчика СЭТ
+
+var i:byte;
+    temp:integer;
+    t:tcrc;
+begin
+ temp:=UpdCRC(data[ps],$FFFF);
+ for i:=ps+1 to ps+n-1 do
+  temp:=UpdCRC(data[i],temp);
+ t[1]:=temp div 256;
+ t[2]:=temp mod 256;
+ result:=t;
+end; //  Вычисление CRC для счетчика СЭТ
+
+ }
+
+
+function TComPort.Write(ppDriverData: pDriverData): HResult;
+var  nw,nr,EvtMask,size,fiCRC:dword;
+     i:integer;
+     pDD:pDriverData;
+     pw:TBuff;
+     res:dword;
+     s,s1:string;
+     crc:word;
+     AddrDrv:dword;
+     dwCount:dword;
+begin
+
+ res:=1;
+ try
+     case ppDriverData.AddrDrv of
+        0:begin
+              if CompareStr(string(ppDriverData^.szNoCommand),'PASS')=0 then
+               begin
+                s:='';
+                for i:=0 to ppDriverData^.dwDataSize-1 do
+                 begin
+                  s1:=chr(ppDriverData^.pData[i]);
+                  s:=s+s1;
+                 end;
+                AddPassword(ppDriverData^.szAddress,s); 
+                exit;
+               end;
+
+
+              AddrDrv:=535760372;
+              dwCount:=0;
+              if Length(string(ppDriverData^.szNoCommand))<1 then
+                exit;
+
+
+
+
+              fillchar(pw,sizeof(pw),0);
+              
+              SetAddrAndNoCommand(string(ppDriverData^.szAddress),string(ppDriverData^.szNoCommand),pw,fiCRC, size);
+              if size=0 then exit;
+
+              for i:=0 to ppDriverData^.dwDataSize-1 do
+               pw[i+size]:=ppDriverData^.pData^[i];
+
+              size:=size+ppDriverData^.dwDataSize;
+
+              crc:=CalcCRC(pw,fiCRC,size);
+              pw[size]:=hiByte(crc);
+              pw[size+1]:=loByte(crc);
+              dwCount:=size+2;
+              res:=0;
+          end;
+
+   535760372:begin
+              AddrDrv:=0;
+              dwCount:=0;
+              if ppDriverData.Result=0 then
+                begin
+                  for i:=0 to ppDriverData.dwDataSize-1 do
+                    PW[i]:=ppDriverData.pData[i];
+                  nr:=ppDriverData.dwDataSize;
+                  if nr>1 then
+                   begin
+                    crc:=MakeWord(pw[nr-1],pw[nr-2]);
+                    if crc=CalcCRC(pw,0,nr-2) then
+                     begin
+                      res:=0;
+                      dwCount:=nr-3;
+                      
+                     end;
+                   end;
+                end;
+             end;
+
+   end;
+
+ finally
+   pdd:=coTaskMemAlloc(sizeof(DriverData));
+   fillchar(pdd^,sizeof(DriverData),0);
+   pdd^.AddrDrv:=AddrDrv;
+   pdd^.Handle:=ppDriverData^.Handle;
+   pdd^.Param:=ppDriverData^.Param;
+   pdd^.dwDataSize:=0;
+   pdd^.Result:=res;
+   if res=0 then
+    begin
+
+     pdd^.dwDataSize:=dwCount; //(nr-5)-3;
+     pdd^.pData:=coTaskMemAlloc(pdd^.dwDataSize);
+     for i:=0 to pdd^.dwDataSize-1 do
+      if AddrDrv<>0 then
+       pdd^.pData^[i]:=pw[i]
+      else
+       pdd^.pData^[i]:=pw[i+1];
+    end;
+
+   result:=s_ok;
+   fListResult.Add(pdd);
+ end;
+end;
+
+function TComPort.Read(out ppDriverData:pDriverData):HResult;
+begin
+ ppDriverData:=nil;
+ result:=s_false;
+
+ if fListResult.Count=0 then exit;
+ ppDriverData:=fListResult[0];
+ fListResult.Delete(0);
+ result:=s_ok;
+end;
+
+procedure TComPort.SetAddrAndNoCommand(Addr, NoCommand: string;
+  var Buff: TBuff; out fiCRC, Size: dword);
+var sAddr,sAddrM,s1,Addr_:string;
+    len,i,j:integer;
+
+begin
+ Size:=0;
+ if not fInModem then
+  begin
+   Addr_:=copy(Addr,pos('_',Addr)+1,Length(Addr));
+   fiCRC:=0;
+  end
+ else
+  begin
+   Addr_:=Addr;
+   fiCRC:=9;
+  end;
+
+ if Pos('_',Addr_)>0 then
+  begin
+   sAddrM:=copy(Addr_,1,pos('_',Addr_)-1);
+   sAddr:=copy(Addr_,pos('_',Addr_)+1,Length(Addr_));
+   fiCRC:=9;
+  end
+ else
+  begin
+   sAddr:=Addr_;
+   sAddrM:='';
+   fiCRC:=0;
+  end;
+
+  len:=length(sAddrM);
+  j:=0; s1:='';
+  for i:=1 to len do
+   if (sAddrM[i]<>'.') and (i<len) then
+    s1:=s1+sAddrM[i]
+   else
+    begin
+     if i=len then
+      s1:=s1+sAddrM[i];
+     try
+      Buff[j]:=strtoint(s1);
+     except
+     end;
+     inc(j);
+     s1:='';
+    end;
+
+ // Size:=j;
+
+
+  Buff[j]:=strtoint(sAddr);
+  i:=1;
+  while i<Length(NoCommand) do
+   begin
+    s1:=NoCommand[i]+NoCommand[i+1];
+    inc(j);
+    Buff[j]:=strtoint('$'+s1);
+    inc(i,2);
+   end;
+  
+  Size:=j+1;
+end;
+
+procedure TComPort.SetLog(IsWrite: boolean; Buff: TBuff; Count: dword);
+const
+ M='%s %s %s(%d)';
+
+var F:TextFile;
+    fFileName,sw,sd:string;
+    IOError,i :integer;
+begin
+  if not fEnableLog then exit;
+  fFileName:=ChangeFileExt(GetModuleFileNameStr(HInstance,true), '.logdrv');
+  AssignFile(F, fFileName);
+  if FileExists(fFileName) then
+   Append(F)
+  else
+   Rewrite(F);
+
+  IOError := IOResult;
+  if IOError = 0 then
+   begin
+     if IsWrite then
+      sw:='w'
+     else
+      sw:='r';
+
+     sd:='';
+     for i:=0 to count-1 do
+      sd:=sd+' '+inttohex(Buff[i],2);
+
+     WriteLN(f,format(m,[sw,formatdatetime('hh:nn:ss:zzz',now),sd,count]));
+     IOError := IOResult;
+   end;
+  CloseFile(F);
+end;
+
+
+
+procedure TComPort.AddPassword(Addr,Pass:string);
+var p:PPasswordItem;
+    i:integer;
+    fl:boolean;
+begin
+ fl:=false;
+ for i:=0 to fPasswordsList.Count-1 do
+  if TPasswordItem(fPasswordsList[i]^).Addr=Addr then
+   begin
+    fl:=true;
+    TPasswordItem(fPasswordsList[i]^).Pass:=Pass;
+    break;
+   end;
+ if fl then exit;
+
+ new(p);
+ p^.Addr:=Addr;
+ p^.Pass:=Pass;
+ fPasswordsList.Add(p);
+end;
+
+procedure TComPort.ClearPasswordsList;
+var i:integer;
+begin
+ for i:=0 to fPasswordsList.Count-1 do
+  dispose(fPasswordsList[i]);
+ fPasswordsList.Clear; 
+end;
+
+function TComPort.SearchPassword(Addr: string; var Pass: string): boolean;
+var i:integer;
+begin
+ result:=false;
+ for i:=0 to fPasswordsList.Count-1 do
+  if TPasswordItem(fPasswordsList[i]^).Addr=Addr then
+   begin
+    result:=true;
+    Pass:=TPasswordItem(fPasswordsList[i]^).Pass;
+    break;
+   end;
+end;
+
+initialization
+   IniName:=ChangeFileExt(GetModuleFileNameStr(HInstance,true), '.INI');
+   Co:=TComport.Create;
+
+
+end.

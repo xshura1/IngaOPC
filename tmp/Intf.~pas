@@ -1,0 +1,37 @@
+unit Intf;
+
+interface
+ uses sysutils,windows,ActiveX;
+ type
+
+ TChangeDrvData=procedure(Info:POleStr); stdcall;
+
+ pDriverData=^DriverData;
+ DriverData=record
+  Handle          :dword;
+  szAddress       :POleStr;
+  szNoCommand     :POleStr;
+  CountW          :Integer;
+  CountR          :Integer;
+  dwDataSize      :dword;
+  pData           :PByteArray;
+  Result          :dword;
+ end;
+
+// DriverDataArray=array [0..65535] of pDriverData;
+// pDriverDataArray=^DriverDataArray;
+
+ {TDriverData=record
+  Handle          :dword;
+  szAddress       :ShortString;
+  szNoCommand     :ShortString;
+  CountW          :Integer;
+  CountR          :Integer;
+  Result          :dword;
+  dwDataSize      :dword;
+  pData           :PByteArray;
+ end;
+  }
+implementation
+
+end.

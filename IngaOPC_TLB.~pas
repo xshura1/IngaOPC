@@ -1,0 +1,235 @@
+unit IngaOPC_TLB;
+
+// ************************************************************************ //
+// WARNING                                                                    
+// -------                                                                    
+// The types declared in this file were generated from data read from a       
+// Type Library. If this type library is explicitly or indirectly (via        
+// another type library referring to this type library) re-imported, or the   
+// 'Refresh' command of the Type Library Editor activated while editing the   
+// Type Library, the contents of this file will be regenerated and all        
+// manual modifications will be lost.                                         
+// ************************************************************************ //
+
+// PASTLWTR : 1.2
+// File generated on 25.04.2007 11:05:11 from Type Library described below.
+
+// ************************************************************************  //
+// Type Lib: C:\work\IngaOPC\IngaOPC.tlb (1)
+// LIBID: {DA3AB3E0-7A98-407E-B569-D8170CEC2531}
+// LCID: 0
+// Helpfile: 
+// HelpString: IngaOPC Library
+// DepndLst: 
+//   (1) v2.0 stdole, (C:\WINDOWS\system32\stdole2.tlb)
+// ************************************************************************ //
+{$TYPEDADDRESS OFF} // Unit must be compiled without type-checked pointers. 
+{$WARN SYMBOL_PLATFORM OFF}
+{$WRITEABLECONST ON}
+{$VARPROPSETTER ON}
+interface
+
+uses Windows, ActiveX, Classes, Graphics, StdVCL, Variants;
+  
+
+// *********************************************************************//
+// GUIDS declared in the TypeLibrary. Following prefixes are used:        
+//   Type Libraries     : LIBID_xxxx                                      
+//   CoClasses          : CLASS_xxxx                                      
+//   DISPInterfaces     : DIID_xxxx                                       
+//   Non-DISP interfaces: IID_xxxx                                        
+// *********************************************************************//
+const
+  // TypeLibrary Major and minor versions
+  IngaOPCMajorVersion = 1;
+  IngaOPCMinorVersion = 0;
+
+  LIBID_IngaOPC: TGUID = '{DA3AB3E0-7A98-407E-B569-D8170CEC2531}';
+
+  IID_IHADAOBJ: TGUID = '{8227C177-4A36-4453-8A45-0A211C902CAD}';
+  CLASS_HADAOBJ: TGUID = '{340B6884-8FF3-4F89-A784-24A650D0CF39}';
+  IID_IHADAGROUP: TGUID = '{0BD23BA7-4A0F-4E50-BFE2-0CCB8B08604E}';
+  CLASS_HADAGROUP: TGUID = '{5CD7DE56-7ED6-4608-B753-73F78B7BD6DA}';
+  IID_IHAAEOBJ: TGUID = '{841ED716-2A02-4ED7-9C3E-D197067CD09D}';
+  CLASS_HAAEOBJ: TGUID = '{D366192C-B05C-456C-BBFA-3E60190D673C}';
+  IID_IHAAEAreaBrowser: TGUID = '{A2D782F8-741C-4F26-8CC1-FA021FB5759F}';
+  CLASS_HAAEAreaBrowser: TGUID = '{1B95C056-5074-4139-B30F-E23E4AB5B661}';
+type
+
+// *********************************************************************//
+// Forward declaration of types defined in TypeLibrary                    
+// *********************************************************************//
+  IHADAOBJ = interface;
+  IHADAOBJDisp = dispinterface;
+  IHADAGROUP = interface;
+  IHAAEOBJ = interface;
+  IHAAEOBJDisp = dispinterface;
+  IHAAEAreaBrowser = interface;
+  IHAAEAreaBrowserDisp = dispinterface;
+
+// *********************************************************************//
+// Declaration of CoClasses defined in Type Library                       
+// (NOTE: Here we map each CoClass to its Default Interface)              
+// *********************************************************************//
+  HADAOBJ = IHADAOBJ;
+  HADAGROUP = IHADAGROUP;
+  HAAEOBJ = IHAAEOBJ;
+  HAAEAreaBrowser = IHAAEAreaBrowser;
+
+
+// *********************************************************************//
+// Interface: IHADAOBJ
+// Flags:     (4416) Dual OleAutomation Dispatchable
+// GUID:      {8227C177-4A36-4453-8A45-0A211C902CAD}
+// *********************************************************************//
+  IHADAOBJ = interface(IDispatch)
+    ['{8227C177-4A36-4453-8A45-0A211C902CAD}']
+  end;
+
+// *********************************************************************//
+// DispIntf:  IHADAOBJDisp
+// Flags:     (4416) Dual OleAutomation Dispatchable
+// GUID:      {8227C177-4A36-4453-8A45-0A211C902CAD}
+// *********************************************************************//
+  IHADAOBJDisp = dispinterface
+    ['{8227C177-4A36-4453-8A45-0A211C902CAD}']
+  end;
+
+// *********************************************************************//
+// Interface: IHADAGROUP
+// Flags:     (256) OleAutomation
+// GUID:      {0BD23BA7-4A0F-4E50-BFE2-0CCB8B08604E}
+// *********************************************************************//
+  IHADAGROUP = interface(IUnknown)
+    ['{0BD23BA7-4A0F-4E50-BFE2-0CCB8B08604E}']
+  end;
+
+// *********************************************************************//
+// Interface: IHAAEOBJ
+// Flags:     (4416) Dual OleAutomation Dispatchable
+// GUID:      {841ED716-2A02-4ED7-9C3E-D197067CD09D}
+// *********************************************************************//
+  IHAAEOBJ = interface(IDispatch)
+    ['{841ED716-2A02-4ED7-9C3E-D197067CD09D}']
+  end;
+
+// *********************************************************************//
+// DispIntf:  IHAAEOBJDisp
+// Flags:     (4416) Dual OleAutomation Dispatchable
+// GUID:      {841ED716-2A02-4ED7-9C3E-D197067CD09D}
+// *********************************************************************//
+  IHAAEOBJDisp = dispinterface
+    ['{841ED716-2A02-4ED7-9C3E-D197067CD09D}']
+  end;
+
+// *********************************************************************//
+// Interface: IHAAEAreaBrowser
+// Flags:     (4416) Dual OleAutomation Dispatchable
+// GUID:      {A2D782F8-741C-4F26-8CC1-FA021FB5759F}
+// *********************************************************************//
+  IHAAEAreaBrowser = interface(IDispatch)
+    ['{A2D782F8-741C-4F26-8CC1-FA021FB5759F}']
+  end;
+
+// *********************************************************************//
+// DispIntf:  IHAAEAreaBrowserDisp
+// Flags:     (4416) Dual OleAutomation Dispatchable
+// GUID:      {A2D782F8-741C-4F26-8CC1-FA021FB5759F}
+// *********************************************************************//
+  IHAAEAreaBrowserDisp = dispinterface
+    ['{A2D782F8-741C-4F26-8CC1-FA021FB5759F}']
+  end;
+
+// *********************************************************************//
+// The Class CoHADAOBJ provides a Create and CreateRemote method to          
+// create instances of the default interface IHADAOBJ exposed by              
+// the CoClass HADAOBJ. The functions are intended to be used by             
+// clients wishing to automate the CoClass objects exposed by the         
+// server of this typelibrary.                                            
+// *********************************************************************//
+  CoHADAOBJ = class
+    class function Create: IHADAOBJ;
+    class function CreateRemote(const MachineName: string): IHADAOBJ;
+  end;
+
+// *********************************************************************//
+// The Class CoHADAGROUP provides a Create and CreateRemote method to          
+// create instances of the default interface IHADAGROUP exposed by              
+// the CoClass HADAGROUP. The functions are intended to be used by             
+// clients wishing to automate the CoClass objects exposed by the         
+// server of this typelibrary.                                            
+// *********************************************************************//
+  CoHADAGROUP = class
+    class function Create: IHADAGROUP;
+    class function CreateRemote(const MachineName: string): IHADAGROUP;
+  end;
+
+// *********************************************************************//
+// The Class CoHAAEOBJ provides a Create and CreateRemote method to          
+// create instances of the default interface IHAAEOBJ exposed by              
+// the CoClass HAAEOBJ. The functions are intended to be used by             
+// clients wishing to automate the CoClass objects exposed by the         
+// server of this typelibrary.                                            
+// *********************************************************************//
+  CoHAAEOBJ = class
+    class function Create: IHAAEOBJ;
+    class function CreateRemote(const MachineName: string): IHAAEOBJ;
+  end;
+
+// *********************************************************************//
+// The Class CoHAAEAreaBrowser provides a Create and CreateRemote method to          
+// create instances of the default interface IHAAEAreaBrowser exposed by              
+// the CoClass HAAEAreaBrowser. The functions are intended to be used by             
+// clients wishing to automate the CoClass objects exposed by the         
+// server of this typelibrary.                                            
+// *********************************************************************//
+  CoHAAEAreaBrowser = class
+    class function Create: IHAAEAreaBrowser;
+    class function CreateRemote(const MachineName: string): IHAAEAreaBrowser;
+  end;
+
+implementation
+
+uses ComObj;
+
+class function CoHADAOBJ.Create: IHADAOBJ;
+begin
+  Result := CreateComObject(CLASS_HADAOBJ) as IHADAOBJ;
+end;
+
+class function CoHADAOBJ.CreateRemote(const MachineName: string): IHADAOBJ;
+begin
+  Result := CreateRemoteComObject(MachineName, CLASS_HADAOBJ) as IHADAOBJ;
+end;
+
+class function CoHADAGROUP.Create: IHADAGROUP;
+begin
+  Result := CreateComObject(CLASS_HADAGROUP) as IHADAGROUP;
+end;
+
+class function CoHADAGROUP.CreateRemote(const MachineName: string): IHADAGROUP;
+begin
+  Result := CreateRemoteComObject(MachineName, CLASS_HADAGROUP) as IHADAGROUP;
+end;
+
+class function CoHAAEOBJ.Create: IHAAEOBJ;
+begin
+  Result := CreateComObject(CLASS_HAAEOBJ) as IHAAEOBJ;
+end;
+
+class function CoHAAEOBJ.CreateRemote(const MachineName: string): IHAAEOBJ;
+begin
+  Result := CreateRemoteComObject(MachineName, CLASS_HAAEOBJ) as IHAAEOBJ;
+end;
+
+class function CoHAAEAreaBrowser.Create: IHAAEAreaBrowser;
+begin
+  Result := CreateComObject(CLASS_HAAEAreaBrowser) as IHAAEAreaBrowser;
+end;
+
+class function CoHAAEAreaBrowser.CreateRemote(const MachineName: string): IHAAEAreaBrowser;
+begin
+  Result := CreateRemoteComObject(MachineName, CLASS_HAAEAreaBrowser) as IHAAEAreaBrowser;
+end;
+
+end.

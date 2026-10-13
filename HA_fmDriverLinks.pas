@@ -1,0 +1,759 @@
+unit HA_fmDriverLinks;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ExtCtrls, StdCtrls,ha_opcman, Buttons;
+
+
+
+type
+
+  TPaintObj=class(TObject)
+   private
+    function GetSelRect(NoSel:integer):TRect;
+    function GetBottom: integer;
+    function GetRight: integer;
+   protected
+    fPB:TPaintBox;
+    fLeft:integer;
+    fTop:integer;
+    fWidth:integer;
+    fHeight:integer;
+    fIndex:integer;
+   public
+    constructor Create(Left,Top:integer);
+    destructor destroy; override;
+
+    property Left:integer read fLeft write fLeft;
+    property Top:integer read fTop write fTop;
+    property Width:integer read fWidth write fWidth;
+    property Height:integer read fHeight write fHeight;
+    property Right:integer read GetRight;
+    property Bottom:integer read GetBottom;
+    property Index:integer read fIndex write fIndex;
+
+    function TestSel(X,Y:integer):boolean; virtual;
+
+    procedure Repaint(ACanvas:TCanvas); virtual;
+   end;
+
+  TDrvPaint=class(TPaintObj)
+   private
+    fNameDrv:string;
+    fHashDrv:dword;
+
+    fReadLinks:TList;
+    fIsProcWSel:boolean;
+    fIsProcRSel:boolean;
+
+    function GetCountReadLinks: integer;
+    function GetReadLinks(index: integer): dword;
+   public
+    constructor Create(Left,Top:integer; NameDrv:string; HashDrv:dword);
+    destructor Destroy; override;
+    procedure Repaint(ACanvas:TCanvas); override;
+    function TestSel(X,Y:integer):boolean; override;
+
+    property HashDrv:dword read fHashDrv;
+    procedure AddLink(HashDrv:dword);
+    property ReadLinks[index:integer]:dword read GetReadLinks;
+    property CountReadLinks:integer read GetCountReadLinks;
+
+    property IsProcWSel:boolean read fIsProcWSel;
+    property IsProcRSel:boolean read fIsProcRSel;
+
+
+  end;
+
+  TSrvPaint=class(TDrvPaint)
+   private
+    procedure Repaint(ACanvas:TCanvas); override;
+   public
+    constructor Create;
+  end;
+
+  THAPoints=array of TPoint;
+
+  THAPanel=class(TPanel)
+   private
+     fSelObj,fSelLink:TPaintObj;
+     fObjList:TList;
+     fb:TBitmap;
+     ox,oy,oldx,oldy:integer;
+     procedure Paint; override;
+     procedure PaintLine(ACanvas:TCanvas; ps,pd:TDrvPaint);
+     procedure GetLineCoord(ps,pd:TDrvPaint; var ArrP:THAPoints; var AngleArrow:integer);
+
+     procedure WMEraseBackground(var Message: TMessage); message WM_ERASEBKGND;
+     procedure WMSize(var Message: TMessage); message WM_SIZE;
+     procedure WMLButtonDown(var Message: TWMLButtonDown); message WM_LBUTTONDOWN;
+     procedure WMMouseMove(var Message: TWMMouseMove); message WM_MOUSEMOVE;
+     procedure WMLButtonUp(var Message: TWMLButtonUp); message WM_LBUTTONUP;
+
+     function TestSel(const X,Y:integer):TPaintObj;
+   public
+    constructor Create(AOwner:TComponent);
+    destructor Destroy; override;
+    procedure AddObj(Obj:TPaintObj);
+  end;
+
+
+
+
+
+
+  TfmDriverLinks = class(TForm)
+    Panel1: TPanel;
+    Button1: TButton;
+    SB: TScrollBox;
+    procedure FormCreate(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+    procedure SBResize(Sender: TObject);
+  private
+    { Private declarations }
+    PB:THAPanel;
+  public
+    { Public declarations }
+  end;
+
+
+
+implementation
+
+{$R *.dfm}
+
+const
+ ColorsDrv:array [0..6] of TColor=(clBlack,clMaroon,clGreen, clOlive, clNavy, clPurple,clTeal);
+
+
+procedure AngleTextOut(CV: TCanvas; const sText: String; x, y, angle:integer);
+var
+ LogFont: TLogFont;
+ SaveFont: TFont;
+begin
+  SaveFont := TFont.Create;
+  SaveFont.Assign(CV.Font);
+  GetObject(SaveFont.Handle, sizeof(TLogFont), @LogFont);
+  with LogFont do
+   begin
+    lfEscapement := angle *10;
+    lfPitchAndFamily := FIXED_PITCH or FF_DONTCARE;
+   end; {with}
+  CV.Font.Handle := CreateFontIndirect(LogFont);
+  SetBkMode(CV.Handle, TRANSPARENT);
+  CV.TextOut(x, y, sText);
+  CV.Font.Assign(SaveFont);
+  SaveFont.Free;
+end;
+
+
+
+
+
+
+
+
+{ TPaintObj }
+
+constructor TPaintObj.Create(Left,Top:integer);
+begin
+ inherited Create;
+ fLeft:=Left;
+ fTop:=Top;
+
+end;
+
+destructor TPaintObj.destroy;
+begin
+
+  inherited;
+end;
+
+function TPaintObj.TestSel(X, Y: integer): boolean;
+begin
+ result:=(fLeft<=X) and (fLeft+fWidth>=X) and (fTop<=Y) and (fTop+fHeight>=Y);
+end;
+
+procedure TPaintObj.Repaint(ACanvas:TCanvas);
+var i:integer;
+begin
+// if fSelected then
+//  for i:=0 to 7 do
+//   ACanvas.Rectangle(GetSelRect(i));
+end;
+
+
+function TPaintObj.GetSelRect(NoSel: integer): TRect;
+const
+ selw=4;
+begin
+  case NoSel of
+   0:result:=Rect(fLeft-selw,fTop-selw,fLeft+selw,fTop+selw);
+   1:result:=Rect(fLeft+(fWidth div 2)-selw,fTop-selw,fLeft+(fWidth div 2)+selw,fTop+selw);
+   2:result:=Rect(fLeft+fWidth-selw,fTop-selw,fLeft+fWidth+selw,fTop+selw);
+   3:result:=Rect(fLeft+fWidth-selw,fTop+(fHeight div 2)-selw,fLeft+fWidth+selw,fTop+(fHeight div 2)+selw);
+   4:result:=Rect(fLeft+fWidth-selw,fTop+fHeight-selw,fLeft+fWidth+selw,fTop+fHeight+selw);
+   5:result:=Rect(fLeft+(fWidth div 2)-selw,fTop+fHeight-selw,fLeft+(fWidth div 2)+selw,fTop+fHeight+selw);
+   6:result:=Rect(fLeft-selw,fTop+fHeight-selw,fLeft+selw,fTop+fHeight+selw);
+   7:result:=Rect(fLeft-selw,fTop+(fHeight div 2)-selw,fLeft+selw,fTop+(fHeight div 2)+selw);
+  end;
+end;
+
+
+function TPaintObj.GetBottom: integer;
+begin
+ result:=fTop+fHeight;
+end;
+
+function TPaintObj.GetRight: integer;
+begin
+ result:=fLeft+fWidth;
+end;
+
+{ TDrvPaint }
+
+procedure TDrvPaint.AddLink(HashDrv: dword);
+var i:integer;
+    flAdd:boolean;
+begin
+ flAdd:=true;
+ for i:=0 to fReadLinks.Count-1 do
+  if dword(fReadLinks[i])=HashDrv then
+   begin
+    flAdd:=false;
+    break;
+   end;
+
+ if flAdd then
+  fReadLinks.Add(pointer(HashDrv));
+end;
+
+constructor TDrvPaint.Create(Left,Top:integer; NameDrv: string; HashDrv:dword);
+begin
+ inherited Create(left,top);
+ fNameDrv:=NameDrv;
+ fHashDrv:=HashDrv;
+ fReadLinks:=TList.Create;
+end;
+
+
+
+destructor TDrvPaint.Destroy;
+begin
+  fReadLinks.Free;
+  inherited;
+end;
+
+function TDrvPaint.GetCountReadLinks: integer;
+begin
+ result:=fReadLinks.Count;
+end;
+
+
+function TDrvPaint.GetReadLinks(index: integer): dword;
+begin
+ result:=dword(fReadLinks[index]);
+end;
+
+
+
+procedure TDrvPaint.Repaint(ACanvas:TCanvas);
+const
+ _off=5;
+var  h,w:integer;
+begin
+  ACanvas.Pen.Color:=clBlack;
+  ACanvas.Pen.Width:=1;
+  w:=ACanvas.TextWidth(fNameDrv+' '+inttostr(fHashDrv));
+  h:=ACanvas.TextHeight(fNameDrv+' '+inttostr(fHashDrv));
+  fWidth:=w+50;
+  fHeight:=h+50;
+  ACanvas.Rectangle(fLeft,fTop,fWidth+fLeft,fHeight+fTop);
+  ACanvas.Pen.Width:=1;
+
+  if fIsProcWSel then
+   ACanvas.Pen.Width:=2;
+
+  ACanvas.MoveTo(fLeft,fTop+20);
+  ACanvas.LineTo(fLeft+fWidth,fTop+20);
+
+  ACanvas.Brush.Color:=ColorsDrv[fIndex mod Length(ColorsDrv)];
+  ACanvas.Rectangle(fLeft+5,fTop+(fHeight div 2)-5,fLeft+15,fTop+(fHeight div 2)+5);
+  ACanvas.Brush.Color:=clWindow;
+
+
+  ACanvas.Pen.Width:=1;
+  if fIsProcRSel then
+   ACanvas.Pen.Width:=2;
+
+
+  ACanvas.MoveTo(fLeft,fTop+fHeight-20);
+  ACanvas.LineTo(fLeft+fWidth,fTop+fHeight-20);
+
+
+
+  ACanvas.TextOut(fLeft+18,fTop+(fHeight div 2)-(h div 2),fNameDrv+' '+inttostr(fHashDrv));
+  ACanvas.TextOut(fLeft+10,fTop+2,'procedure Write');
+  ACanvas.TextOut(fLeft+10,fTop+fHeight-2-h,'procedure Read');
+  inherited;
+end;
+
+procedure TfmDriverLinks.FormCreate(Sender: TObject);
+begin
+// fListObj:=TList.Create;
+// fSelObj:=TList.Create;
+ PB:=THAPanel.Create(self);
+ PB.Parent:=SB;
+ PB.Top:=0; PB.Left:=0;
+ PB.Width:=sb.Width;
+ PB.Height:=sb.Height;
+ //PB.Align:=alClient;
+ PB.AddObj(TSrvPaint.Create);
+
+end;
+
+procedure TfmDriverLinks.Button1Click(Sender: TObject);
+var dp:TDrvPaint;
+    st:TStringList;
+    i,t:integer;
+begin
+ st:=TStringList.Create;
+ try
+  OPCMan.DLLMan.GetDrivers(st,false);
+  t:=20;
+  for i:=0 to st.Count-1 do
+   begin
+    dp:=TDrvPaint.Create(50,t,st[i],dword(st.Objects[i]));
+    t:=t+30+10;
+    PB.AddObj(dp);
+   end;
+ finally
+  st.Free;
+  pb.Refresh;
+ end;
+
+end;
+
+
+
+{ THAPaintBox }
+
+
+constructor THAPanel.Create(AOwner: TComponent);
+begin
+ inherited Create(AOwner);
+ fObjList:=TList.Create;
+ fb:=TBitmap.Create;
+
+end;
+
+destructor THAPanel.Destroy;
+var i:integer;
+begin
+ for i:=0 to fObjList.Count-1 do
+  TPaintObj(fObjList[i]).Free;
+ fb.Free;
+ fObjList.Free;
+  inherited;
+end;
+
+procedure THAPanel.PaintLine(ACanvas:TCanvas; ps, pd: TDrvPaint);
+const
+  _offy=13;
+  _offx=3;
+  _offy1=_offy+3;
+  _offt=3;
+procedure PaintArrow(lx,ly,Angle:integer);
+
+var OldC:TColor;
+begin
+ OldC:=ACanvas.Brush.Color;
+ ACanvas.Brush.Color:=ACanvas.Pen.Color;
+ case Angle of
+  90 : ACanvas.Polygon([Point(lx-_offy,ly-_offx),Point(lx,ly),Point(lx-_offy,ly+_offx),Point(lx-_offy,ly-_offx)]);
+  180: ACanvas.Polygon([Point(lx-_offx,ly-_offy),Point(lx,ly),Point(lx+_offx,ly-_offy),Point(lx-_offx,ly-_offy)]);
+  270: ACanvas.Polygon([Point(lx+_offy,ly-_offx),Point(lx,ly),Point(lx+_offy,ly+_offx),Point(lx+_offy,ly-_offx)]);
+ end;
+ ACanvas.Brush.Color:=OldC;
+end;
+
+var ArrP:THAPoints;
+    Angle:integer;
+    h,w:integer;
+begin
+ GetLineCoord(ps,pd,ArrP,Angle);
+ if Length(ArrP)=0 then exit;
+ ACanvas.Polyline(ArrP);
+ PaintArrow(ArrP[High(ArrP)].X,ArrP[High(ArrP)].Y,Angle);
+ h:=ACanvas.TextHeight('123');
+ w:=ACanvas.TextWidth('123');
+ case Angle of
+  90 : ACanvas.TextOut(ArrP[High(ArrP)].X-w-_offt,ArrP[High(ArrP)].Y-h-_offt,'123');
+  180: ACanvas.TextOut(ArrP[High(ArrP)].X+_offt,ArrP[High(ArrP)].Y-h-_offt,'123');
+  270: ACanvas.TextOut(ArrP[High(ArrP)].X+_offt,ArrP[High(ArrP)].Y-h-_offt,'123');
+ end;
+ SetLength(ArrP,0);
+end;
+
+procedure THAPanel.Paint;
+
+function GetObjByHash(Hash:dword):TDrvPaint;
+var i:integer;
+begin
+ result:=nil;
+ for i:=0 to fObjList.Count-1 do
+  if TDrvPaint(fObjList[i]).HashDrv=Hash then
+   begin
+    result:=TDrvPaint(fObjList[i]);
+    break;
+   end;
+end;
+
+var r:TRect;
+    i,j:integer;
+    p,p1:TDrvPaint;
+    arr:array of TPoint;
+begin
+
+ FB.Canvas.Font.Name:='Verdana';
+ fB.Width:=Width;
+ fB.Height:=Height;
+
+ fB.Canvas.Brush.Color:=clWindow;
+ fB.Canvas.FillRect(Rect(0,0,width,height));
+
+// fb.Canvas.MoveTo(20,0);
+// fb.Canvas.LineTo(20,height);
+
+ for i:=0 to fObjList.Count-1 do
+  begin
+   fB.Canvas.Pen.Width:=1;
+   TPaintObj(fObjList[i]).Repaint(fB.Canvas);
+   fB.Canvas.Pen.Width:=2;
+   p:=TDrvPaint(fObjList[i]);
+   for j:=0 to p.CountReadLinks-1 do
+    begin
+      p1:=GetObjByHash(p.ReadLinks[j]);
+      fB.Canvas.Pen.Color:=ColorsDrv[p.Index mod Length(ColorsDrv)];
+      PaintLine(fb.Canvas,p,p1);
+      fB.Canvas.Pen.Color:=clBlack;
+    end;
+  end;
+
+
+
+
+ r:=Rect(0,0,Width,height);
+ canvas.CopyRect(r,fb.Canvas,R);
+end;
+
+procedure THAPanel.WMEraseBackground(var Message: TMessage);
+begin
+
+end;
+
+{ TLinkPaint }
+
+{constructor TLinkPaint.Create(Left, Top: integer; IsWriteLink:boolean);
+begin
+ inherited Create(Left,Top);
+ fWidth:=40;
+ fHeight:=40;
+ fIsWriteLink:=IsWriteLink;
+end;
+
+procedure TLinkPaint.Repaint(ACanvas: TCanvas);
+begin
+  inherited;
+ ACanvas.Pen.Width:=2;
+ if fIsWriteLink then
+  ACanvas.Pen.Color:=clBlue
+ else
+  ACanvas.Pen.Color:=clGreen;
+
+ ACanvas.MoveTo(fLeft,fTop);
+ ACanvas.LineTo(fLeft+fWidth,fTop+fHeight);
+end;}
+
+function TDrvPaint.TestSel(X, Y: integer): boolean;
+begin
+ fIsProcWSel:=false;
+ fIsProcRSel:=false;
+ result:=(fLeft<=X) and (Right>=X) and (fTop<=Y) and (Bottom>=Y);
+ if not result then exit;
+ fIsProcWSel:=(fTop<=Y) and (Y<=(fTop+20));
+ fIsProcRSel:=(Bottom>=Y) and (Y>Bottom-20);
+end;
+
+{ TSrvPaint }
+
+constructor TSrvPaint.Create;
+begin
+ inherited Create(0,0,'IngaOPC Server',0);
+
+end;
+
+procedure TSrvPaint.Repaint(ACanvas: TCanvas);
+const
+ AName='IngaOPC Server';
+var w,h:integer;
+begin
+ ACanvas.MoveTo(fLeft+fWidth,0);
+ ACanvas.LineTo(fLeft+fWidth,fHeight);
+ w:=ACanvas.TextWidth(AName);
+ h:=ACanvas.TextHeight(AName);
+ fWidth:=h*3;
+ AngleTextOut(ACanvas,AName,h,fTop+((fHeight-w) div 2)+w,90);
+end;
+
+procedure THAPanel.WMSize(var Message: TMessage);
+begin
+ if fObjList.Count=0 then exit;
+ TPaintObj(fObjList[0]).Height:=Height;
+end;
+
+procedure THAPanel.WMLButtonDown(var Message: TWMLButtonDown);
+begin
+ MouseCapture:=true;
+ ox:=Message.XPos; oy:=Message.YPos;
+ oldx:=ox; oldy:=oy;
+ fSelObj:=TestSel(ox,oy);
+
+end;
+
+procedure THAPanel.WMLButtonUp(var Message: TWMLButtonUp);
+var ps,pd:TDrvPaint;
+    i:integer;
+begin
+ try
+  if fSelObj<>nil then
+    begin
+     ps:=TDrvPaint(fSelObj);
+     pd:=nil;
+     for i:=fObjList.Count-1 downto 0 do
+      if fSelObj<>fObjList[i] then
+      if TPaintObj(fObjList[i]).TestSel(Message.XPos,Message.YPos) then
+       begin
+        pd:=fObjList[i];
+        break;
+       end;
+
+     if pd<>nil then
+      begin
+       if ps=pd then exit;
+       if (ps is TSrvPaint) and (not (pd is TSrvPaint)) then
+        begin
+         if pd.IsProcRSel then
+          pd.AddLink(ps.HashDrv)
+         else
+          if pd.IsProcWSel then
+           ps.AddLink(pd.HashDrv);
+        end
+       else
+        if (not (ps is TSrvPaint)) and (pd is TSrvPaint) then
+         begin
+          if ps.IsProcRSel then
+           ps.AddLink(pd.HashDrv)
+          else
+           if ps.IsProcWSel then
+            pd.AddLink(ps.HashDrv);
+         end
+        else
+         begin
+          if (not pd.IsProcWSel) and (not pd.IsProcRSel) then exit;
+          if ps.IsProcWSel and pd.IsProcWSel then exit;
+          if ps.IsProcRSel and pd.IsProcRSel then exit;
+          if ps.IsProcRSel then
+           ps.AddLink(pd.HashDrv)
+          else
+           if pd.IsProcRSel then
+            pd.AddLink(ps.HashDrv);
+         end;
+
+      end;
+    end;
+ finally
+  MouseCapture:=false;
+  refresh;
+ end;
+end;
+
+procedure THAPanel.WMMouseMove(var Message: TWMMouseMove);
+var i:integer;
+    MaxRight,MaxBottom:integer;
+begin
+if (fSelObj<>nil) and (Message.Keys and MK_LBUTTON=MK_LBUTTON) then
+ begin
+   if (TDrvPaint(fSelObj).IsProcWSel or TDrvPaint(fSelObj).IsProcRSel) or (TPaintObj(fSelObj) is TSrvPaint) then
+    begin
+     Canvas.Pen.Width:=2;
+     SetROP2(canvas.Handle,R2_Not);
+     Canvas.MoveTo(ox,oy);
+     Canvas.LineTo(oldx,oldy);
+     Canvas.MoveTo(ox,oy);
+     Canvas.LineTo(Message.XPos,Message.YPos);
+     oldx:=Message.XPos; oldy:=Message.YPos;
+     exit;
+    end;
+
+    if fSelObj is TSrvPaint then Exit;
+    canvas.DrawFocusRect(rect(fSelObj.Left,fSelObj.Top,fSelObj.Right,fSelObj.Bottom));
+    fSelObj.Left:=fSelObj.Left+(Message.XPos-ox);
+    fSelObj.Top:=fSelObj.Top+(Message.YPos-oy);
+    oy:=Message.YPos; ox:=Message.XPos;
+    canvas.DrawFocusRect(rect(fSelObj.Left,fSelObj.Top,fSelObj.Right,fSelObj.Bottom));
+
+  {  MaxRight:=0; MaxBottom:=0;
+    for i:=0 to fObjList.Count-1 do
+     begin
+      if TPaintObj(fObjList[i]).Right>MaxRight then
+       MaxRight:=TPaintObj(fObjList[i]).Right;
+      if TPaintObj(fObjList[i]).Bottom>MaxBottom then
+       MaxBottom:=TPaintObj(fObjList[i]).Bottom;
+
+     end;
+
+
+    Width:=MaxRight;
+    Height:=MaxBottom;
+
+    }
+
+ end;
+
+end;
+
+function THAPanel.TestSel(const X, Y: integer): TPaintObj;
+var i:integer;
+begin
+ result:=nil;
+ for i:=fObjList.Count-1 downto 0 do
+  if TPaintObj(fObjList[i]).TestSel(x,y) then
+   begin
+    result:=fObjList[i];
+    break;
+   end;
+
+end;
+
+procedure THAPanel.AddObj(Obj: TPaintObj);
+var i:integer;
+begin
+ i:=fObjList.Add(Obj);
+ Obj.Index:=i;
+end;
+
+procedure THAPanel.GetLineCoord(ps, pd: TDrvPaint; var ArrP: THAPoints; var AngleArrow:integer);
+const
+  _offy=13;
+  _offx=3;
+  _offy1=_offy+3;
+begin
+ if pd is TSrvPaint then
+  begin
+   SetLength(ArrP,2);
+   Arrp[0]:=Point(ps.Left,ps.Bottom-10);
+   ArrP[1]:=Point(pd.Right,ps.Bottom-10);
+   AngleArrow:=270;
+   exit;
+  end;
+
+ if ps is TSrvPaint then
+  begin
+   SetLength(ArrP,2);
+   ArrP[0]:=Point(ps.Right,pd.Top+10);
+   Arrp[1]:=Point(pd.Left,pd.Top+10);
+   AngleArrow:=90;
+   exit;
+  end;
+
+ if ps.Bottom<pd.Top then
+  begin
+   if ps.Left<=pd.Left then
+    begin
+     if ps.Right-pd.Left>_offy1 then
+      begin
+       SetLength(ArrP,2);
+       ArrP[0]:=Point(ps.Right-((ps.Right-pd.Left) div 2),ps.Bottom);
+       ArrP[1]:=Point(pd.Left+((ps.Right-pd.Left) div 2),pd.Top);
+       AngleArrow:=180;
+      end
+     else
+      begin
+        SetLength(ArrP,4);
+        ArrP[0]:=Point(ps.Right-_offy1,ps.Bottom);
+        ArrP[1]:=Point(ArrP[0].X,ps.Bottom+((pd.Top-ps.Bottom)div 2));
+        ArrP[2]:=Point(pd.Left+_offy1,ArrP[1].Y);
+        ArrP[3]:=Point(ArrP[2].X,pd.Top);
+        AngleArrow:=180;
+      end;
+    end
+   else
+    if pd.Right-ps.Left>_offy1 then
+      begin
+       SetLength(ArrP,2);
+       ArrP[0]:=Point(ps.Left+((pd.Right-ps.Left) div 2),ps.Bottom);
+       ArrP[1]:=Point(pd.Right-((pd.Right-ps.Left) div 2),pd.Top);
+       AngleArrow:=180;
+      end
+    else
+      begin
+        SetLength(ArrP,4);
+        ArrP[0]:=Point(ps.Left+_offy1,ps.Bottom);
+        ArrP[1]:=Point(ArrP[0].X,ps.Bottom+((pd.Top-ps.Bottom)div 2));
+        ArrP[2]:=Point(pd.Right-_offy1,ArrP[1].Y);
+        ArrP[3]:=Point(ArrP[2].X,pd.Top);
+        AngleArrow:=180;
+      end;
+
+  end
+ else
+  if ps.Bottom>pd.Top then
+   begin
+    if ps.Right<=pd.Left then
+     begin
+       SetLength(ArrP,4);
+       ArrP[0]:=Point(ps.Right,ps.Bottom-_offy1);
+       ArrP[1]:=Point(ps.Right+(pd.Left-ps.Right) div 2,ArrP[0].Y);
+       ArrP[2]:=Point(ArrP[1].X,pd.Top+_offy1);
+       ArrP[3]:=Point(pd.Left,ArrP[2].Y);
+       AngleArrow:=90;
+     end
+    else
+    if ps.Left>pd.Right then
+     begin
+       SetLength(ArrP,4);
+       ArrP[0]:=Point(ps.left,ps.Bottom-_offy1);
+       ArrP[1]:=Point(ps.left+(pd.Right-ps.left) div 2,ArrP[0].Y);
+       ArrP[2]:=Point(ArrP[1].X,pd.Top+_offy1);
+       ArrP[3]:=Point(pd.Right,ArrP[2].Y);
+       AngleArrow:=270;
+     end
+    else
+     if (ps.Right>=pd.Left){ and (ps.Right<=pd.Right)} then
+      begin
+       SetLength(ArrP,4);
+       ArrP[0]:=Point(ps.Right,ps.Bottom-_offy1);
+       ArrP[1]:=Point(pd.Right+_offy1,ArrP[0].Y);
+       ArrP[2]:=Point(ArrP[1].X,pd.Top+_offy1);
+       ArrP[3]:=Point(pd.Right,ArrP[2].Y);
+       AngleArrow:=270;
+      end;
+   end;
+
+
+
+end;
+
+procedure TfmDriverLinks.SBResize(Sender: TObject);
+begin
+ if PB=nil then exit;
+ if SB.Width>PB.Width then
+  PB.Width:=SB.Width;
+ if SB.Height>PB.Height then
+  PB.Height:=SB.Height; 
+end;
+
+end.

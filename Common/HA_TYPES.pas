@@ -1,0 +1,1764 @@
+unit HA_TYPES;
+
+interface
+ uses Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+      Dialogs, Menus, GsvObjectInspectorTypes,VirtualTrees;
+
+ {$I IngaOPC.inc}     
+ const
+
+  {биты в ClassID определяющие принадлежность конкретного объекта
+
+               3 byte                           2 byte                          1 byte                    0 byte
+     ___________________________     ___________________________     _________________________    ____________________
+    |                           |   |                           |   |                         |  |                    |
+   31  30  29  28  27  26  25  24  23  22  21  20  19  18  17  16  15  14  13  12  11  10  9  8  7  6  5  4  3  2  1  0
+       |________|   |___________|   |___________________________|   |_________________________|  |________|  |_____|  |- если =0 то у объекта могут быть дочерние объекты
+            |              |                      |                             |                     |           |- класс дочернего объекта 2 уровень
+            |              |                      |                             |                     |- класс дочернего объекта 1 уровень
+            |              |                      |                             |- класс родительского объекта
+            |              |                      |
+            |              |                      |- папка для объектов в категории (Tag,Property и т.д.)
+            |              |
+            |              |- тип категории в шаблоне (DA,HDA,AE и т.д. всего может быть 15 типов)
+            |
+            |- тип документа (конфигурация, шаблон и т.д.)
+  }
+
+
+  {
+   // Типы документов
+   ClassTypeTemplate = $10000000;
+   ClassTypeConfig   = $20000000;
+
+   // Категории объектов
+   ClassCatDA  = $1000000;
+   ClassCatHDA = $2000000;
+   ClassCatAE  = $3000000;
+
+   // Папки для объектов
+   ClassFolderTags     = $10000;
+   ClassFolderProps    = $20000;
+   ClassFolderCommands = $30000;
+   ClassFolderEvents   = $40000;
+   ClassFolderTimers   = $50000;
+
+   // Классы объектов
+   ClassFolder  = $100;
+   ClassTag     = $201;
+   ClassProp    = $301;
+   ClassCommand = $401;
+   ClassEvent   = $500;
+   ClassTimer   = $601;
+   ClassDevice  = $701;
+
+   // Классы дочерних объектов
+   ClassLinkProp = $211;
+
+
+   // Классы для папок объектов типа DA
+   ClassFoldersDA        = ClassTypeTemplate or ClassCatDA; //$11000000;
+
+   ClassFolderTagsDA     = ClassFoldersDA or ClassFolderTags;    //$11010000;
+   ClassFolderPropsDA    = ClassFoldersDA or ClassFolderProps;   //$11020000;
+   ClassFolderCommandsDA = ClassFoldersDA or ClassFolderCommands;//$11030000;
+   ClassFolderTimersDA   = ClassFoldersDA or ClassFolderTimers;  //$11050000;
+
+
+   // Классы конкретных объектов для шаблонов
+
+   ClassTagDA     = ClassFolderTagsDA     or ClassTag;      //$11010201;
+   ClassFolderDA  = ClassFolderTagsDA     or ClassFolder;   //$11010100;
+   ClassPropDA    = ClassFolderPropsDA    or ClassProp;     //$11010301;
+   ClassCommandDA = ClassFolderCommandsDA or ClassCommand;  //$11010401;
+   ClassTimerDA   = ClassFolderTimersDA   or ClassTimer;    //$11010601;
+   ClassLinkPropDA =ClassFolderTagsDA     or ClassLinkProp; //$11010211;
+
+
+
+   // Классы конкретных объектов для конфигураций
+
+   ClassFolderConfig = ClassTypeConfig or ClassFolder;
+   ClassDeviceConfig = ClassTypeConfig or ClassDevice;
+
+
+  }
+
+
+
+  BranchSep='\';
+
+ // ClassFolderTemplate  = 5;
+  ClassTemplate        = 10;
+
+  ClassFolderTags      = 20;
+  ClassFolderProps     = 25;
+  ClassFolderCommands  = 30;
+  ClassFolderEvents    = 35;
+  ClassFolderTimers    = 38;
+
+ // ClassFolderScripts   = 35;
+ // ClassFolderController = 40;
+
+  //reserved up 50
+  ClassFolder          = 50;
+
+
+  ClassTag      = 120;
+  ClassTagHDA   = 122;
+  ClassProp     = 125;
+  ClassCommand  = 130;
+  ClassEvent    = 135;
+  ClassSubEvent = 136;
+  ClassCatEvent = 137;
+  ClassTimer    = 138;
+
+
+
+ // ClassScript   = 135;
+  ClassController   = 140;
+  ClassLinkProp = 145;
+
+
+ // ClassOrder    = 55;
+ // ClassDRV      = 56;
+ // ClassContr    = 57;
+  HighClassFolders=100;
+
+  RegPScript='HAOBJ\d+_\d+'; //'(HAOBJ\d+_\d+_\d+)|(HAOBJ\d+_\d+)'
+  FormatPScript='HAOBJ%d_%d';
+  RegScript='\["[^"\]]*"\]';
+  FormatScript='["%s"]';
+
+  FormatPScriptProc='HAPROC%d';
+  RegScriptProc='<.+/>';
+  FormatScriptProc='<%s/>';
+
+  // от какого окна пришло сообщение
+  HAMsgListObj=1;
+  HAMsgScript=2;
+
+  // типы сообщений
+  HATypeMsgError=1;
+  HATypeMsgWarning=2; 
+  HATypeMsgExecError=3;
+
+ type
+  TOID=type integer;
+  TChangeNameEvent=procedure (OldName,NewName:string) of object;
+
+  PDataItem2=^TDataItem2;
+  TDataItem2=record
+   LinkNode:PDataItem2;//pointer;
+   OID:TOID;
+   ClassID:TOID;
+   Name:widestring;
+   Props:widestring;
+   Description:widestring;
+  end;
+
+ TPSTypeProc=(pstp_Global,pstp_Local,pstp_Params);
+ TPSTypeEvent=(pste_TagsR,pste_TagsW,pste_CommandsBW,pste_CommandsAR,pste_EventDef,pste_Device,pste_Timer);
+
+{ PHAMessage=^THAMessage;
+ THAMessage=record
+  CatMessage:widestring;
+  Message:widestring;
+  Param1,
+  Param2,
+  Param3:integer;
+ end; }
+
+
+  {$M+}
+
+  THABase_Proxy=class
+   private
+    fData:array of PDataItem2;
+    fSt:TStringList;
+    function GetProperty(PropName:string; var Value:widestring):boolean;
+    procedure SetProperty(PropName:string; const Value:widestring);
+    function GetNameObj: string;
+    procedure SetNameObj(const Value: string);
+    function GetOID: integer;
+    function GetDescription: string;
+    procedure SetDescription(const Value: string);
+
+   public
+    constructor Create;
+    destructor Destroy; override;
+    procedure AddData(DataItem:PDataItem2); virtual;
+    procedure ClearData; virtual;
+    function CountData:integer;
+    property OID:integer read GetOID;
+   published
+    property NameObj:string read GetNameObj write SetNameObj;
+    property Description:string read GetDescription write SetDescription;
+  end;
+
+  THATemplate_Proxy=class(THABase_Proxy)
+  private
+    function GetDateCreate: string;
+    function GetDateLastUpdate: string;
+    procedure SetDateCreate(const Value: string);
+    procedure SetDateLastUpdate(const Value: string);
+    function GetCompileID: integer;
+    procedure SetCompileID(const Value: integer);
+    function GetOnActivateDevice: string;
+    function GetOnDeactivateDevice: string;
+    procedure SetOnActivateDevice(const Value: string);
+    procedure SetOnDeactivateDevice(const Value: string);
+   published
+    property DateCreate:string read GetDateCreate write SetDateCreate;
+    property DateLastUpdate:string read GetDateLastUpdate write SetDateLastUpdate;
+    property CompileID:integer read GetCompileID write SetCompileID;
+    property OnActivateDevice:string read GetOnActivateDevice write SetOnActivateDevice;
+    property OnDeactivateDevice:string read GetOnDeactivateDevice write SetOnDeactivateDevice;
+  end;
+
+
+  TIGTag_Proxy=class(THABase_Proxy)
+   private
+    function GetDataType: word;
+    function GetOnRead: string;
+    function GetOnWrite: string;
+    function GetReadable: boolean;
+    function GetWriteable: boolean;
+    procedure SetDataType(const Value: word);
+    procedure SetOnRead(const Value: string);
+    procedure SetOnWrite(const Value: string);
+    procedure SetReadable(const Value: boolean);
+    procedure SetWriteable(const Value: boolean);
+    function GetSaved: boolean;
+    procedure SetSaved(const Value: boolean);
+   published
+    property DataType:word read GetDataType write SetDataType;
+    property Readable:boolean read GetReadable write SetReadable;
+    property Writeable:boolean read GetWriteable write SetWriteable;
+    property Saved:boolean read GetSaved write SetSaved;
+    property OnRead:string read GetOnRead write SetOnRead;
+    property OnWrite:string read GetOnWrite write SetOnWrite;
+
+  end;
+
+
+ {$IFDEF HDAINTERFACE}
+  TIGTagHDA_Proxy=class(THABase_Proxy)
+   private
+    function GetDataType: word;
+    function GetReadable: boolean;
+    function GetWriteable: boolean;
+    procedure SetDataType(const Value: word);
+    procedure SetReadable(const Value: boolean);
+    procedure SetWriteable(const Value: boolean);
+    published
+    property DataType:word read GetDataType write SetDataType;
+    property Readable:boolean read GetReadable write SetReadable;
+    property Writeable:boolean read GetWriteable write SetWriteable;
+
+  end;
+
+ {$ENDIF}
+
+
+
+ TIGProp_Proxy=class(THABase_Proxy)
+  private
+    function GetDataType: word;
+    function GetPropID: dword;
+    procedure SetDataType(const Value: word);
+    procedure SetPropID(const Value: dword);
+    function GetUniqueValue: boolean;
+    procedure SetUniqueValue(const Value: boolean);
+   published
+    property DataType:word read GetDataType write SetDataType;
+    property PropID:dword read GetPropID write SetPropID;
+    property UniqueValue:boolean read GetUniqueValue write SetUniqueValue;
+  end;
+
+
+
+ TIGCommand_Proxy=class(THABase_Proxy)
+  private
+ //   function GetCountReadBytes: integer;
+    function GetCountWriteBytes: integer;
+    function GetNoCommand: string;
+    function GetOnAfterRead: string;
+    function GetOnBeforeWrite: string;
+ //   procedure SetCountReadBytes(const Value: integer);
+    procedure SetCountWriteBytes(const Value: integer);
+    procedure SetNoCommand(const Value: string);
+    procedure SetOnAfterRead(const Value: string);
+    procedure SetOnBeforeWrite(const Value: string);
+    function GetPriority: word;
+    procedure SetPriority(const Value: word);
+    function GetParam: dword;
+    procedure SetParam(const Value: dword);
+  published
+    property NoCommand:string read GetNoCommand write SetNoCommand;
+    property CountWriteBytes:integer read GetCountWriteBytes write SetCountWriteBytes;
+    property Param:dword read GetParam write SetParam;
+//    property CountReadBytes:integer read GetCountReadBytes write SetCountReadBytes;
+    property OnBeforeWrite:string read GetOnBeforeWrite write SetOnBeforeWrite;
+    property OnAfterRead:string read GetOnAfterRead write SetOnAfterRead;
+    property Priority:word read GetPriority write SetPriority;
+  end;
+
+{ THALinkProp_Proxy=class(THABase_Proxy)
+  private
+    function GetDataType: word;
+    function GetPropID: dword;
+    function GetValue: string;
+    procedure SetValue(const Value: string);
+    function GetUniqueValue: boolean;
+    function GetOIDLink: integer;
+   public
+    property OIDLink:integer read GetOIDLink;
+   published
+    property DataType:word read GetDataType;
+    property PropID:dword read GetPropID;
+    property UniqueValue:boolean read GetUniqueValue;
+    property Value:string read GetValue write SetValue;
+  end;
+ }
+
+
+ THALinkProp2_Proxy=class(THABase_Proxy)
+   private
+    fHAProp_Proxy: TIGProp_Proxy;
+    function GetDefaultValue:OleVariant;
+    function GetValue: string;
+    procedure SetValue(const Value: string);
+   public
+    constructor Create;
+    destructor Destroy; override;
+    procedure AddData(DataItem:PDataItem2); override;
+    procedure ClearData; override;
+    function GetValueAsHexStr:string;
+   published
+    property HAProp:TIGProp_Proxy read fHAProp_Proxy write fHAProp_Proxy;
+    property Value:string read GetValue write SetValue;
+  end;
+
+
+ TIGDevice_Proxy=class(THABase_Proxy)
+  private
+    function GetAddress: string;
+    function GetDriverName: string;
+    function GetParam: dword;
+    function GetTemplateName: string;
+    procedure SetAddress(const Value: string);
+    procedure SetDriverName(const Value: string);
+    procedure SetParam(const Value: dword);
+    procedure SetTemplateName(const Value: string);
+    function GetActive: boolean;
+    procedure SetActive(const Value: boolean);
+
+   published
+    property TemplateName:string read GetTemplateName write SetTemplateName;
+    property DriverName:string read GetDriverName write SetDriverName;
+    property Address:string read GetAddress write SetAddress;
+    property Param:dword read GetParam write SetParam;
+    property Active:boolean read GetActive write SetActive default true;
+  end;
+
+ THAEvent_Proxy=class(THABase_Proxy)
+  private
+    function GetDescription: string;
+    function GetEnabled: boolean;
+    function GetSeverity: word;
+    procedure SetDescription(const Value: string);
+    procedure SetEnabled(const Value: boolean);
+    procedure SetSeverity(const Value: word);
+    function GetOnCheckDefinition: string;
+    procedure SetOnCheckDefinition(const Value: string);
+    function GetAcked: boolean;
+    procedure SetAcked(const Value: boolean);
+  published
+   property Description:string read GetDescription write SetDescription;
+   property Enabled:boolean read GetEnabled write SetEnabled;
+   property Severity:word read GetSeverity write SetSeverity;
+   property Acked:boolean read GetAcked write SetAcked;
+   property OnCheckDefinition:string read GetOnCheckDefinition write SetOnCheckDefinition;
+ end;
+
+ THACatEvent_Proxy=class(THABase_Proxy)
+  private
+    function GetTypeEvent: byte;
+    procedure SetTypeEvent(const Value: byte);
+
+  published
+   property TypeEvent:byte read GetTypeEvent write SetTypeEvent;
+ end;
+
+ TIGTimer_Proxy=class(THABase_Proxy)
+  private
+    function GetEnabled: boolean;
+    function GetInterval: dword;
+    procedure SetEnabled(const Value: boolean);
+    procedure SetInterval(const Value: dword);
+    function GetOnTimer: string;
+    procedure SetOnTimer(const Value: string);
+
+  published
+   property Enabled:boolean read GetEnabled write SetEnabled;
+   property Interval:dword read GetInterval write SetInterval;
+   property OnTimer:string read GetOnTimer write SetOnTimer;
+ end;
+
+
+
+ {$M-}
+
+ THADataType_INFO = class(TGsvObjectInspectorTypeListInfo)
+  protected
+    class function  ListEnumItems(Index: Integer):
+                    PGsvObjectInspectorListItem; override;
+  public
+    class function  TypeInfo: PGsvObjectInspectorPropertyInfo; override;
+  end;
+
+
+ THATypeEvent_INFO = class(TGsvObjectInspectorTypeListInfo)
+  protected
+    class function  ListEnumItems(Index: Integer):
+                    PGsvObjectInspectorListItem; override;
+  public
+    class function  TypeInfo: PGsvObjectInspectorPropertyInfo; override;
+  end;
+
+
+
+ THABase_Proxy_INFO = class(TGsvObjectInspectorTypeInfo)
+  public
+    class function  ChildrenInfo(Index: Integer):
+                    PGsvObjectInspectorPropertyInfo; override;
+  end;
+
+ THATemplate_Proxy_INFO = class(TGsvObjectInspectorTypeInfo)
+  public
+    class function  ChildrenInfo(Index: Integer):
+                    PGsvObjectInspectorPropertyInfo; override;
+  end;
+
+ TIGTag_Proxy_INFO = class(TGsvObjectInspectorTypeInfo)
+  public
+    class function  ChildrenInfo(Index: Integer):
+                    PGsvObjectInspectorPropertyInfo; override;
+  end;
+
+ {$IFDEF HDAINTERFACE}
+ TIGTagHDA_Proxy_INFO = class(TGsvObjectInspectorTypeInfo)
+  public
+    class function  ChildrenInfo(Index: Integer):
+                    PGsvObjectInspectorPropertyInfo; override;
+  end;
+ {$ENDIF}
+
+ TIGProp_Proxy_INFO = class(TGsvObjectInspectorTypeInfo)
+  public
+    class function  TypeInfo: PGsvObjectInspectorPropertyInfo; override;
+    class function  ChildrenInfo(Index: Integer):
+                    PGsvObjectInspectorPropertyInfo; override;
+  end;
+
+ TIGCommand_Proxy_INFO = class(TGsvObjectInspectorTypeInfo)
+  public
+    class function  ChildrenInfo(Index: Integer):
+                    PGsvObjectInspectorPropertyInfo; override;
+  end;
+
+{ THALinkProp_Proxy_INFO = class(TGsvObjectInspectorTypeInfo)
+  public
+    class function  ChildrenInfo(Index: Integer):
+                    PGsvObjectInspectorPropertyInfo; override;
+  end;
+ }
+ THALinkProp2_Proxy_INFO = class(TGsvObjectInspectorTypeInfo)
+  public
+    class function  ChildrenInfo(Index: Integer):
+                    PGsvObjectInspectorPropertyInfo; override;
+  end;
+
+ TIGDevice_Proxy_INFO = class(TGsvObjectInspectorTypeInfo)
+  public
+    class function  ChildrenInfo(Index: Integer):
+                    PGsvObjectInspectorPropertyInfo; override;
+  end;
+
+ THAEvent_Proxy_INFO = class(TGsvObjectInspectorTypeInfo)
+  public
+    class function  ChildrenInfo(Index: Integer):
+                    PGsvObjectInspectorPropertyInfo; override;
+  end;
+
+ THACatEvent_Proxy_INFO = class(TGsvObjectInspectorTypeInfo)
+  public
+    class function  ChildrenInfo(Index: Integer):
+                    PGsvObjectInspectorPropertyInfo; override;
+  end;
+
+ TIGTimer_Proxy_INFO = class(TGsvObjectInspectorTypeInfo)
+  public
+    class function  ChildrenInfo(Index: Integer):
+                    PGsvObjectInspectorPropertyInfo; override;
+  end;
+
+
+ function DecodePSVar(PSVar:string; var ClassId,OID:integer):boolean;
+implementation
+  uses ActiveX,ha_utils;
+
+
+ function DecodePSVar(PSVar:string; var ClassId,OID:integer):boolean;
+ var s,sps:string;
+
+ begin
+  result:=false;
+  ClassId:=0;
+  OID:=0;
+  if pos('HAOBJ',psvar)<>1 then exit;
+  sps:=copy(psvar,6,length(psvar));
+  if pos('_',sps)=0 then exit;
+  s:=copy(sps,1,pos('_',sps)-1);
+  classid:=strtoint(s);
+  delete(sps,1,pos('_',sps));
+  if pos('_',sps)=0 then
+   OID:=strtoint(sps);
+{  else
+   begin
+    s:=copy(sps,1,pos('_',sps)-1);
+    oid:=strtoint(s);
+    delete(sps,1,pos('_',sps));
+    Dop:=strtoint(sps);
+   end; }
+ result:=true;
+
+ end;
+
+
+{ THADataType_INFO }
+
+class function THADataType_INFO.ListEnumItems(
+  Index: Integer): PGsvObjectInspectorListItem;
+const
+  DSK: array[0..23] of TGsvObjectInspectorListItem = (
+    ( Name: 'ShortInt';   Data: $10),
+    ( Name: 'Byte';  Data: $11),
+    ( Name: 'Smallint';   Data: $02),
+    ( Name: 'Word';  Data: $12),
+    ( Name: 'Integer';   Data: $03),
+    ( Name: 'LongWord';  Data: $13),
+    ( Name: 'Single';   Data: $04),
+    ( Name: 'Double';   Data: $05),
+    ( Name: 'Currency';   Data: $06),
+    ( Name: 'Date'; Data: $07),
+    ( Name: 'String'; Data: $08),
+    ( Name: 'Boolean'; Data: $0B),
+
+    ( Name: 'Array of ShortInt';   Data: $10 or $2000),
+    ( Name: 'Array of Byte';  Data: $11 or $2000),
+    ( Name: 'Array of Smallint';   Data: $02 or $2000),
+    ( Name: 'Array of Word';  Data: $12 or $2000),
+    ( Name: 'Array of Integer';   Data: $03 or $2000),
+    ( Name: 'Array of LongWord';  Data: $13 or $2000),
+    ( Name: 'Array of Single';   Data: $04 or $2000),
+    ( Name: 'Array of Double';   Data: $05 or $2000),
+    ( Name: 'Array of Currency';   Data: $06 or $2000),
+    ( Name: 'Array of Date'; Data: $07 or $2000),
+    ( Name: 'Array of String'; Data: $08 or $2000),
+    ( Name: 'Array of Boolean'; Data: $0B or $2000)
+
+  );
+begin
+  if Index <= High(DSK) then
+   begin
+    Result := @DSK[Index];
+    Result.Name:=VarTypeToStr(Result.Data);
+   end
+  else
+   Result := nil;
+
+end;
+
+class function THADataType_INFO.TypeInfo: PGsvObjectInspectorPropertyInfo;
+const
+  DSK: TGsvObjectInspectorPropertyInfo = (
+   Name: 'DataType'; Caption: 'Тип данных'; Kind: pkDropDownList
+  );
+begin
+  Result := @DSK;
+end;
+
+
+
+{ THABase_Proxy }
+
+procedure THABase_Proxy.AddData(DataItem: PDataItem2);
+begin
+ SetLength(fData,Length(fData)+1);
+ fData[High(fData)]:=DataItem;
+end;
+
+procedure THABase_Proxy.ClearData;
+begin
+ SetLength(fData,0);
+end;
+
+function THABase_Proxy.CountData: integer;
+begin
+ result:=Length(fData);
+end;
+
+constructor THABase_Proxy.Create;
+begin
+ inherited Create;
+ fSt:=TStringList.Create;
+ 
+end;
+
+destructor THABase_Proxy.Destroy;
+begin
+  ClearData;
+  fSt.Free;
+  inherited;
+end;
+
+function THABase_Proxy.GetDescription: string;
+begin
+ result:=fData[0]^.Description;
+end;
+
+function THABase_Proxy.GetNameObj: string;
+begin
+// if Length(fData)>1 then
+//  result:=''
+// else
+  result:=fData[0]^.Name;
+end;
+
+function THABase_Proxy.GetOID: integer;
+begin
+ if length(fData)>1 then
+  result:=-1
+ else
+  result:=fData[0]^.OID;
+end;
+
+function THABase_Proxy.GetProperty(PropName: string;
+  var Value: widestring): boolean;
+var i:integer;
+    p:PDataItem2;
+
+begin
+ result:=false;
+ fst.Clear;
+ fSt.Text:=fData[0]^.Props;
+ for i:=0 to fSt.Count-1 do
+  if CompareText(PropName,fSt.Names[i])=0 then
+   begin
+    result:=true;
+    Value:=fSt.ValueFromIndex[i];
+    break;
+   end;
+ if result then exit;
+// if fData[0]^.LinkNode=nil then exit;
+// if fTV=nil then exit;
+ p:=fData[0]^.LinkNode;
+ if p=nil then exit;
+ fSt.Text:=p^.Props;
+ for i:=0 to fSt.Count-1 do
+  if CompareText(PropName,fSt.Names[i])=0 then
+   begin
+    result:=true;
+    Value:=fSt.ValueFromIndex[i];
+    break;
+   end;
+end;
+
+procedure THABase_Proxy.SetDescription(const Value: string);
+begin
+ if Length(fData)>1 then exit;
+ fData[0]^.Description:=Value;
+end;
+
+procedure THABase_Proxy.SetNameObj(const Value: string);
+begin
+ if Length(fData)>1 then exit;
+ fData[0]^.Name:=Value;
+end;
+
+procedure THABase_Proxy.SetProperty(PropName: string; const Value: widestring);
+var i,j:integer;
+    fl:boolean;
+begin
+ for i:=0 to High(fData) do
+  begin
+    fst.Clear;
+    fSt.Text:=fData[i]^.Props;
+    fl:=false;
+    for j:=0 to fst.Count-1 do
+     if CompareText(PropName,fst.Names[j])=0 then
+       begin
+         fst[j]:=PropName+'='+Value;
+         fl:=true;
+         break;
+       end;
+    if not fl then
+     fSt.Add(PropName+'='+Value);
+    fData[i]^.Props:=fSt.Text;
+  end;
+ fSt.Clear;
+end;
+
+
+
+{ TIGTag_Proxy }
+
+
+
+function TIGTag_Proxy.GetDataType: word;
+var s:widestring;
+begin
+ result:=0;
+ if GetProperty('DataType',s) then
+  result:=strtoint(s);
+end;
+
+
+function TIGTag_Proxy.GetOnRead: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('OnRead',s) then
+  result:=s;
+
+end;
+
+function TIGTag_Proxy.GetOnWrite: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('OnWrite',s) then
+  result:=s;
+end;
+
+function TIGTag_Proxy.GetReadable: boolean;
+var s:widestring;
+    v:variant;
+begin
+ result:=false;
+ if GetProperty('Readable',s) then
+  begin
+   v:=s;
+   result:=v;
+  end;
+end;
+
+function TIGTag_Proxy.GetSaved: boolean;
+var s:widestring;
+    v:variant;
+begin
+ result:=false;
+ if GetProperty('Saved',s) then
+  begin
+   v:=s;
+   result:=v;
+  end;
+
+end;
+
+function TIGTag_Proxy.GetWriteable: boolean;
+var s:widestring;
+    v:variant;
+begin
+ result:=false;
+ if GetProperty('Writeable',s) then
+  begin
+   v:=s;
+   result:=v;
+  end;
+end;
+
+procedure TIGTag_Proxy.SetDataType(const Value: word);
+begin
+ SetProperty('DataType',inttostr(Value));
+end;
+
+procedure TIGTag_Proxy.SetOnRead(const Value: string);
+begin
+ SetProperty('OnRead',Value);
+end;
+
+procedure TIGTag_Proxy.SetOnWrite(const Value: string);
+begin
+ SetProperty('OnWrite',Value);
+end;
+
+procedure TIGTag_Proxy.SetReadable(const Value: boolean);
+begin
+ if Value then
+  SetProperty('Readable','True')
+ else
+  SetProperty('Readable','False');
+end;
+
+procedure TIGTag_Proxy.SetSaved(const Value: boolean);
+begin
+ if Value then
+  SetProperty('Saved','True')
+ else
+  SetProperty('Saved','False');
+
+end;
+
+procedure TIGTag_Proxy.SetWriteable(const Value: boolean);
+begin
+ if Value then
+  SetProperty('Writeable','True')
+ else
+  SetProperty('Writeable','False');
+end;
+
+
+{ TIGTag_Proxy_INFO }
+
+class function TIGTag_Proxy_INFO.ChildrenInfo(
+  Index: Integer): PGsvObjectInspectorPropertyInfo;
+const
+  DSK: array[0..7] of TGsvObjectInspectorPropertyInfo = (
+    ( Name: 'NameObj';   Caption: 'Имя'; Kind: pkText),
+    ( Name: 'DataType';  NestedClass: THADataType_INFO),
+    ( Name: 'Readable';  Caption: 'Права на чтение'; Kind: pkBoolean ),
+    ( Name: 'Writeable'; Caption: 'Права на запись'; Kind: pkBoolean ),
+    ( Name: 'Saved';     Caption: 'Сохраняемый';     Kind: pkBoolean ),
+    ( Name: 'Description'; Caption: 'Описание';      Kind: pkTextDialog),
+
+    ( Name: 'OnRead';    Caption: 'При чтении'; Kind: pkEvent),
+    ( Name: 'OnWrite';   Caption: 'При записи'; Kind: pkEvent)
+    );
+begin
+  if Index <= High(DSK) then Result := @DSK[Index]
+  else                       Result := nil;
+
+
+end;
+
+{ TIGProp_Proxy }
+
+function TIGProp_Proxy.GetDataType: word;
+var s:widestring;
+begin
+ result:=0;
+ if GetProperty('DataType',s) then
+  result:=strtoint(s);
+end;
+
+function TIGProp_Proxy.GetPropID: dword;
+var s:widestring;
+begin
+ result:=0;
+ if GetProperty('PropID',s) then
+  result:=strtoint(s);
+end;
+
+function TIGProp_Proxy.GetUniqueValue: boolean;
+var s:widestring;
+    v:variant;
+begin
+ result:=false;
+ if GetProperty('UniqueValue',s) then
+  begin
+   v:=s;
+   result:=v;
+  end;
+
+end;
+
+procedure TIGProp_Proxy.SetDataType(const Value: word);
+begin
+ SetProperty('DataType',inttostr(Value));
+end;
+
+procedure TIGProp_Proxy.SetPropID(const Value: dword);
+begin
+ SetProperty('PropID',inttostr(Value));
+end;
+
+procedure TIGProp_Proxy.SetUniqueValue(const Value: boolean);
+begin
+ if Value then
+  SetProperty('UniqueValue','True')
+ else
+  SetProperty('UniqueValue','False');
+
+end;
+
+{ TIGProp_Proxy_INFO }
+
+class function TIGProp_Proxy_INFO.ChildrenInfo(
+  Index: Integer): PGsvObjectInspectorPropertyInfo;
+const
+  DSK: array[0..4] of TGsvObjectInspectorPropertyInfo = (
+    ( Name: 'NameObj';   Caption: 'Имя'; Kind: pkText),
+    ( Name: 'DataType';  NestedClass: THADataType_INFO),
+    ( Name: 'PropID';    Caption: 'Идентификатор'; Kind: pkText ),
+    ( Name: 'UniqueValue';    Caption: 'Значение уникально'; Kind: pkBoolean),
+    ( Name: 'Description'; Caption: 'Описание'; Kind: pkTextDialog)
+    );
+begin
+  if Index <= High(DSK) then Result := @DSK[Index]
+  else                       Result := nil;
+
+end;
+
+class function TIGProp_Proxy_INFO.TypeInfo: PGsvObjectInspectorPropertyInfo;
+const
+  DSK: TGsvObjectInspectorPropertyInfo = (
+    Caption: 'Свойство'; Kind: pkFolder;
+  );
+begin
+  Result := @DSK;
+end;
+
+{ THABase_Proxy_INFO }
+
+class function THABase_Proxy_INFO.ChildrenInfo(
+  Index: Integer): PGsvObjectInspectorPropertyInfo;
+const
+  DSK: array[0..1] of TGsvObjectInspectorPropertyInfo = (
+    ( Name: 'NameObj';   Caption: 'Имя'; Kind: pkText),
+    ( Name: 'Description';   Caption: 'Описание'; Kind: pkText)
+    );
+begin
+  if Index <= High(DSK) then Result := @DSK[Index]
+  else                       Result := nil;
+
+end;
+
+{ TIGCommand_Proxy }
+
+
+
+function TIGCommand_Proxy.GetCountWriteBytes: integer;
+var s:widestring;
+begin
+ result:=0;
+ if GetProperty('CountWriteBytes',s) then
+  result:=strtoint(s);
+end;
+
+function TIGCommand_Proxy.GetNoCommand: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('NoCommand',s) then
+  result:=s;
+end;
+
+function TIGCommand_Proxy.GetOnAfterRead: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('OnAfterRead',s) then
+  result:=s;
+end;
+
+function TIGCommand_Proxy.GetOnBeforeWrite: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('OnBeforeWrite',s) then
+  result:=s;
+end;
+
+function TIGCommand_Proxy.GetParam: dword;
+var s:widestring;
+begin
+ result:=0;
+ if GetProperty('Param',s) then
+  result:=strtoint(s);
+end;
+
+function TIGCommand_Proxy.GetPriority: word;
+var s:widestring;
+begin
+ result:=1000;
+ if GetProperty('Priority',s) then
+  result:=strtoint(s);
+end;
+
+
+
+procedure TIGCommand_Proxy.SetCountWriteBytes(const Value: integer);
+begin
+ SetProperty('CountWriteBytes',inttostr(Value));
+end;
+
+procedure TIGCommand_Proxy.SetNoCommand(const Value: string);
+begin
+ SetProperty('NoCommand',Value);
+end;
+
+procedure TIGCommand_Proxy.SetOnAfterRead(const Value: string);
+begin
+ SetProperty('OnAfterRead',Value);
+end;
+
+procedure TIGCommand_Proxy.SetOnBeforeWrite(const Value: string);
+begin
+ SetProperty('OnBeforeWrite',Value);
+end;
+
+procedure TIGCommand_Proxy.SetParam(const Value: dword);
+begin
+ SetProperty('Param',inttostr(Value));
+end;
+
+procedure TIGCommand_Proxy.SetPriority(const Value: word);
+begin
+ SetProperty('Priority',inttostr(Value));
+end;
+
+{ TIGCommand_Proxy_INFO }
+
+class function TIGCommand_Proxy_INFO.ChildrenInfo(
+  Index: Integer): PGsvObjectInspectorPropertyInfo;
+const
+  DSK: array[0..7] of TGsvObjectInspectorPropertyInfo = (
+    ( Name: 'NameObj';          Caption: 'Имя'; Kind: pkText),
+    ( Name: 'NoCommand';        Caption: 'Номер команды'; Kind: pkText),
+    ( Name: 'CountWriteBytes';  Caption: 'Кол-во байт на запись'; Kind: pkText),
+    ( Name: 'Param';            Caption: 'Доп. параметр'; Kind: pkText),
+    ( Name: 'Priority';         Caption: 'Приоритет'; Kind: pkText),
+    ( Name: 'Description'; Caption: 'Описание'; Kind: pkTextDialog),
+    ( Name: 'OnBeforeWrite';    Caption: 'Перед подачей команды'; Kind: pkEvent),
+    ( Name: 'OnAfterRead';      Caption: 'После приема ответа'; Kind: pkEvent)
+    );
+begin
+  if Index <= High(DSK) then Result := @DSK[Index]
+  else                       Result := nil;
+
+end;
+
+{ THALinkProp_Proxy }
+
+{function THALinkProp_Proxy.GetDataType: word;
+var s:string;
+begin
+ result:=0;
+ if GetProperty('DataType',s) then
+  result:=strtoint(s);
+end;
+
+function THALinkProp_Proxy.GetOIDLink: integer;
+var s:string;
+begin
+ result:=0;
+ if GetProperty('OIDLink',s) then
+  result:=strtoint(s);
+
+end;
+
+function THALinkProp_Proxy.GetPropID: dword;
+var s:string;
+begin
+ result:=0;
+ if GetProperty('PropID',s) then
+  result:=strtoint(s);
+end;
+
+function THALinkProp_Proxy.GetUniqueValue: boolean;
+var s:string;
+    v:variant;
+begin
+ if GetProperty('UniqueValue',s) then
+  begin
+   v:=s;
+   result:=v;
+  end;
+end;
+
+function THALinkProp_Proxy.GetValue: string;
+var s:string;
+begin
+ result:='';
+ if GetProperty('Value',s) then
+  result:=s;
+end;
+
+
+procedure THALinkProp_Proxy.SetValue(const Value: string);
+begin
+ SetProperty('Value',Value);
+end;}
+
+{ THALinkProp_Proxy_INFO }
+
+{class function THALinkProp_Proxy_INFO.ChildrenInfo(
+  Index: Integer): PGsvObjectInspectorPropertyInfo;
+const
+  DSK: array[0..4] of TGsvObjectInspectorPropertyInfo = (
+    ( Name: 'NameObj';   Caption: 'Имя'; Kind: pkImmediateText; ReadOnly:true),
+    ( Name: 'DataType';  NestedClass: THADataType_INFO; ReadOnly:true),
+    ( Name: 'PropID';    Caption: 'Идентификатор'; Kind: pkText; ReadOnly:true),
+    ( Name: 'UniqueValue'; Caption: 'Значение уникально'; Kind: pkBoolean; ReadOnly:true),
+    ( Name: 'Value';     Caption: 'Значение'; Kind: pkText)
+    );
+begin
+  if Index <= High(DSK) then
+   begin
+    Result := @DSK[Index];
+
+   end
+  else
+   Result := nil;
+
+end;
+ }
+{ TIGDevice_Proxy }
+
+function TIGDevice_Proxy.GetActive: boolean;
+var s:widestring;
+    v:variant;
+begin
+ result:=true;
+ if GetProperty('Active',s) then
+  begin
+   v:=s;
+   result:=v;
+  end;
+
+end;
+
+function TIGDevice_Proxy.GetAddress: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('Address',s) then
+  result:=s;
+end;
+
+function TIGDevice_Proxy.GetDriverName: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('DriverName',s) then
+  result:=s;
+end;
+
+function TIGDevice_Proxy.GetParam: dword;
+var s:widestring;
+begin
+ result:=0;
+ if GetProperty('Param',s) then
+  result:=strtoint(s);
+end;
+
+function TIGDevice_Proxy.GetTemplateName: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('TemplateName',s) then
+  result:=s;
+end;
+
+procedure TIGDevice_Proxy.SetActive(const Value: boolean);
+begin
+ if Value then
+  SetProperty('Active','True')
+ else
+  SetProperty('Active','False');
+
+end;
+
+procedure TIGDevice_Proxy.SetAddress(const Value: string);
+begin
+ SetProperty('Address',Value);
+end;
+
+procedure TIGDevice_Proxy.SetDriverName(const Value: string);
+begin
+ SetProperty('DriverName',Value);
+end;
+
+procedure TIGDevice_Proxy.SetParam(const Value: dword);
+begin
+ SetProperty('Param',inttostr(Value));
+end;
+
+procedure TIGDevice_Proxy.SetTemplateName(const Value: string);
+begin
+ SetProperty('TemplateName',Value);
+end;
+
+{ TIGDevice_Proxy_INFO }
+
+class function TIGDevice_Proxy_INFO.ChildrenInfo(
+  Index: Integer): PGsvObjectInspectorPropertyInfo;
+const
+  DSK: array[0..6] of TGsvObjectInspectorPropertyInfo = (
+    ( Name: 'NameObj';      Caption: 'Имя';           Kind: pkText),
+    ( Name: 'TemplateName'; Caption: 'Шаблон';        Kind: pkDropDownList),
+    ( Name: 'DriverName';   Caption: 'Драйвер';       Kind: pkDropDownList),
+    ( Name: 'Address';      Caption: 'Адрес';         Kind: pkText),
+    ( Name: 'Param';        Caption: 'Доп. параметр'; Kind: pkText),
+    ( Name: 'Active';       Caption: 'Активен';       Kind: pkBoolean ),
+    ( Name: 'Description'; Caption: 'Описание'; Kind: pkTextDialog)
+    );
+begin
+  if Index <= High(DSK) then Result := @DSK[Index]
+  else                       Result := nil;
+
+end;
+
+{ THATemplate_Proxy }
+
+
+function THATemplate_Proxy.GetCompileID: integer;
+var s:widestring;
+begin
+ result:=0;
+ if GetProperty('CompileID',s) then
+  result:=strtoint(s);
+
+end;
+
+function THATemplate_Proxy.GetDateCreate: string;
+var s:widestring;
+begin
+ result:=DateTimeToStr(0);
+ if GetProperty('DateCreate',s) then
+  result:=s;
+end;
+
+function THATemplate_Proxy.GetDateLastUpdate: string;
+var s:widestring;
+begin
+ result:=DateTimeToStr(0);
+ if GetProperty('DateLastUpdate',s) then
+  result:=s;
+
+end;
+
+
+
+
+function THATemplate_Proxy.GetOnActivateDevice: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('OnActivateDevice',s) then
+  result:=s;
+
+end;
+
+function THATemplate_Proxy.GetOnDeactivateDevice: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('OnDeactivateDevice',s) then
+  result:=s;
+end;
+
+procedure THATemplate_Proxy.SetCompileID(const Value: integer);
+begin
+ SetProperty('CompileID',inttostr(Value));
+end;
+
+procedure THATemplate_Proxy.SetDateCreate(const Value: string);
+begin
+ SetProperty('DateCreate',Value);
+end;
+
+procedure THATemplate_Proxy.SetDateLastUpdate(const Value: string);
+begin
+ SetProperty('DateLastUpdate',Value);
+end;
+
+
+procedure THATemplate_Proxy.SetOnActivateDevice(const Value: string);
+begin
+SetProperty('OnActivateDevice',Value);
+end;
+
+procedure THATemplate_Proxy.SetOnDeactivateDevice(const Value: string);
+begin
+ SetProperty('OnDeactivateDevice',Value);
+end;
+
+{ THATemplate_Proxy_INFO }
+
+class function THATemplate_Proxy_INFO.ChildrenInfo(
+  Index: Integer): PGsvObjectInspectorPropertyInfo;
+const
+  DSK: array[0..5] of TGsvObjectInspectorPropertyInfo = (
+    ( Name: 'DateCreate'; Caption: 'Дата создания'; Kind: pkReadOnlyText),
+    ( Name: 'DateLastUpdate';  Caption: 'Дата последнего изменения'; Kind: pkReadOnlyText),
+    ( Name: 'CompileID';  Caption: 'Версия'; Kind: pkReadOnlyText),
+    ( Name: 'Description';          Caption: 'Описание'; Kind: pkTextDialog),
+    ( Name: 'OnActivateDevice';     Caption: 'При загрузке устройства'; Kind: pkEvent),
+    ( Name: 'OnDeactivateDevice';   Caption: 'При выгрузке устройства'; Kind: pkEvent)
+
+
+
+    );
+begin
+  if Index <= High(DSK) then Result := @DSK[Index]
+  else                       Result := nil;
+
+end;
+
+{ THAEvent_Proxy }
+
+function THAEvent_Proxy.GetAcked: boolean;
+var s:widestring;
+    v:variant;
+begin
+ result:=false;
+ if GetProperty('Acked',s) then
+  begin
+   v:=s;
+   result:=v;
+  end;
+
+end;
+
+function THAEvent_Proxy.GetDescription: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('Description',s) then
+  result:=s;
+end;
+
+function THAEvent_Proxy.GetEnabled: boolean;
+var s:widestring;
+    v:variant;
+begin
+ result:=true;
+ if GetProperty('Enabled',s) then
+  begin
+   v:=s;
+   result:=v;
+  end;
+
+end;
+
+function THAEvent_Proxy.GetOnCheckDefinition: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('OnCheckDefinition',s) then
+  result:=s;
+end;
+
+function THAEvent_Proxy.GetSeverity: word;
+var s:widestring;
+begin
+ result:=0;
+ if GetProperty('Severity',s) then
+  result:=strtoint(s);
+
+end;
+
+procedure THAEvent_Proxy.SetAcked(const Value: boolean);
+begin
+ if Value then
+  SetProperty('Acked','True')
+ else
+  SetProperty('Acked','False');
+
+end;
+
+procedure THAEvent_Proxy.SetDescription(const Value: string);
+begin
+ SetProperty('Description',Value);
+end;
+
+procedure THAEvent_Proxy.SetEnabled(const Value: boolean);
+begin
+ if Value then
+  SetProperty('Enabled','True')
+ else
+  SetProperty('Enabled','False');
+
+end;
+
+procedure THAEvent_Proxy.SetOnCheckDefinition(const Value: string);
+begin
+ SetProperty('OnCheckDefinition',Value);
+end;
+
+procedure THAEvent_Proxy.SetSeverity(const Value: word);
+begin
+ SetProperty('Severity',inttostr(Value));
+end;
+
+{ THAEvent_Proxy_INFO }
+
+class function THAEvent_Proxy_INFO.ChildrenInfo(
+  Index: Integer): PGsvObjectInspectorPropertyInfo;
+const
+  DSK: array[0..6] of TGsvObjectInspectorPropertyInfo = (
+    ( Name: 'NameObj';      Caption: 'Имя';           Kind: pkText),
+    ( Name: 'Description';  Caption: 'Строка события'; Kind: pkText),
+    ( Name: 'Enabled';      Caption: 'Событие активно';  Kind: pkBoolean),
+    ( Name: 'Severity';     Caption: 'Важность';         Kind: pkText),
+    ( Name: 'Acked';        Caption: 'Подтверждать';  Kind: pkBoolean),
+    ( Name: 'Description'; Caption: 'Описание'; Kind: pkTextDialog),
+    ( Name: 'OnCheckDefinition'; Caption: 'Проверка условия'; Kind: pkEvent));
+begin
+  if Index <= High(DSK) then Result := @DSK[Index]
+  else                       Result := nil;
+
+end;
+
+{ THACatEvent_Proxy }
+
+function THACatEvent_Proxy.GetTypeEvent: byte;
+var s:widestring;
+begin
+ result:=0;
+ if GetProperty('TypeEvent',s) then
+  result:=strtoint(s);
+end;
+
+procedure THACatEvent_Proxy.SetTypeEvent(const Value: byte);
+begin
+ SetProperty('TypeEvent',inttostr(Value));
+end;
+
+{ THACatEvent_Proxy_INFO }
+
+class function THACatEvent_Proxy_INFO.ChildrenInfo(
+  Index: Integer): PGsvObjectInspectorPropertyInfo;
+const
+  DSK: array[0..2] of TGsvObjectInspectorPropertyInfo = (
+    ( Name: 'NameObj';   Caption: 'Имя категории'; Kind: pkText),
+    ( Name: 'TypeEvent'; NestedClass: THATypeEvent_INFO),
+    ( Name: 'Description'; Caption: 'Описание'; Kind: pkTextDialog)
+    );
+begin
+  if Index <= High(DSK) then Result := @DSK[Index]
+  else                       Result := nil;
+
+
+end;
+
+{ THATypeEvent_INFO }
+
+class function THATypeEvent_INFO.ListEnumItems(
+  Index: Integer): PGsvObjectInspectorListItem;
+const
+  DSK: array[0..1] of TGsvObjectInspectorListItem = (
+    ( Name: 'События с подсобытиями';   Data: $0004),
+    ( Name: 'Простые события';  Data: $0002));
+begin
+  if Index <= High(DSK) then Result := @DSK[Index]
+  else                       Result := nil;
+
+end;
+
+class function THATypeEvent_INFO.TypeInfo: PGsvObjectInspectorPropertyInfo;
+const
+  DSK: TGsvObjectInspectorPropertyInfo = (
+   Name: 'TypeEvent'; Caption: 'Тип Событий'; Kind: pkDropDownList
+  );
+begin
+  Result := @DSK;
+
+end;
+
+{ THALinkProp2_Proxy }
+
+
+procedure THALinkProp2_Proxy.AddData(DataItem: PDataItem2);
+begin
+  inherited;
+ if fHAProp_Proxy.CountData=0 then
+  fHAProp_Proxy.AddData(DataItem.LinkNode);
+end;
+
+procedure THALinkProp2_Proxy.ClearData;
+begin
+  inherited;
+  fHAProp_Proxy.ClearData;
+end;
+
+constructor THALinkProp2_Proxy.Create;
+begin
+ inherited Create;
+ fHAProp_Proxy:=TIGProp_Proxy.Create;
+end;
+
+destructor THALinkProp2_Proxy.Destroy;
+begin
+  inherited;
+  fHAProp_Proxy.Free;
+end;
+
+function THALinkProp2_Proxy.GetDefaultValue: OleVariant;
+var td:word;
+    v:variant;
+
+begin
+ td:=fHAProp_Proxy.DataType;
+ if (td and VarTypeMask) in [vt_bstr] then
+  v:=VarAsType('',vt_bstr)
+ else
+  if (td and VarTypeMask) in [vt_date] then
+   v:=VarAsType(DateTimeToStr(0),vt_date)
+  else
+   v:=VarAsType(0,td and VarTypeMask);
+
+  if (td and vt_Array)=vt_Array then
+   begin
+    result:=VarArrayCreate([0,0],td and varTypeMask);
+    result[0]:=v;
+   end
+  else
+   result:=v;
+end;
+
+function THALinkProp2_Proxy.GetValue: string;
+var s:widestring;
+    v:variant;
+    ws:widestring;
+
+begin
+ result:='';
+ if GetProperty('Value',s) then
+  begin
+   v:=HAHexStringValueToVariant(s);
+   if v=null then exit;
+  end
+ else
+  begin
+    v:=GetDefaultValue;
+    ws:=HAVariantToHexStringValue(v);
+    SetProperty('Value',ws);
+  end;
+ result:=ArrayVariantToString(v);
+end;
+
+function THALinkProp2_Proxy.GetValueAsHexStr: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('Value',s) then
+  result:=s;
+end;
+
+procedure THALinkProp2_Proxy.SetValue(const Value: string);
+var dt:word;
+    v:variant;
+    ws:widestring;
+begin
+ dt:=fHAProp_Proxy.DataType;
+ try
+  if (dt and vt_Array)<>vt_Array then
+   begin
+     v:=VarAsType(Value,dt);
+     ws:=HAVariantToHexStringValue(v);
+   end
+  else
+   ws:=Value;
+
+  SetProperty('Value',ws);
+ except
+  on E:Exception do
+  raise Exception.Create(E.Message); 
+
+ end;
+
+end;
+
+{ THALinkProp2_Proxy_INFO }
+
+class function THALinkProp2_Proxy_INFO.ChildrenInfo(
+  Index: Integer): PGsvObjectInspectorPropertyInfo;
+const
+  DSK: array[0..2] of TGsvObjectInspectorPropertyInfo = (
+    ( Name: 'HAProp'; NestedClass: TIGProp_Proxy_Info {NestedType: 'TIGProp_Proxy'}),
+    ( Name: 'Value';     Caption: 'Значение'; Kind: pkText),
+    ( Name: 'Description'; Caption: 'Описание'; Kind: pkTextDialog)
+    );
+begin
+  if Index <= High(DSK) then
+   begin
+    Result := @DSK[Index];
+
+   end
+  else
+   Result := nil;
+
+
+end;
+
+{ TIGTimer_Proxy }
+
+function TIGTimer_Proxy.GetEnabled: boolean;
+var s:widestring;
+    v:variant;
+begin
+ result:=false;
+ if GetProperty('Enabled',s) then
+  begin
+   v:=s;
+   result:=v;
+  end;
+
+end;
+
+function TIGTimer_Proxy.GetInterval: dword;
+var s:widestring;
+begin
+ result:=1000;
+ if GetProperty('Interval',s) then
+  result:=strtoint(s);
+end;
+
+function TIGTimer_Proxy.GetOnTimer: string;
+var s:widestring;
+begin
+ result:='';
+ if GetProperty('OnTimer',s) then
+  result:=s;
+end;
+
+procedure TIGTimer_Proxy.SetEnabled(const Value: boolean);
+begin
+ if Value then
+  SetProperty('Enabled','True')
+ else
+  SetProperty('Enabled','False');
+
+end;
+
+procedure TIGTimer_Proxy.SetInterval(const Value: dword);
+begin
+ SetProperty('Interval',inttostr(Value));
+end;
+
+procedure TIGTimer_Proxy.SetOnTimer(const Value: string);
+begin
+ SetProperty('OnTimer',Value);
+end;
+
+{ TIGTimer_Proxy_INFO }
+
+class function TIGTimer_Proxy_INFO.ChildrenInfo(
+  Index: Integer): PGsvObjectInspectorPropertyInfo;
+const
+  DSK: array[0..4] of TGsvObjectInspectorPropertyInfo = (
+    ( Name: 'NameObj';   Caption: 'Имя'; Kind: pkText),
+    ( Name: 'Enabled';   Caption: 'Активен'; Kind: pkBoolean),
+    ( Name: 'Interval';  Caption: 'Интервал'; Kind: pkText),
+    ( Name: 'Description'; Caption: 'Описание'; Kind: pkTextDialog),
+    ( Name: 'OnTimer';   Caption: 'OnTimer';  Kind: pkEvent)
+    );
+begin
+  if Index <= High(DSK) then Result := @DSK[Index]
+  else                       Result := nil;
+
+end;
+
+{ TIGTagHDA_Proxy }
+{$IFDEF HDAINTERFACE}
+function TIGTagHDA_Proxy.GetDataType: word;
+var s:widestring;
+begin
+ result:=0;
+ if GetProperty('DataType',s) then
+  result:=strtoint(s);
+end;
+
+function TIGTagHDA_Proxy.GetReadable: boolean;
+var s:widestring;
+    v:variant;
+begin
+ result:=false;
+ if GetProperty('Readable',s) then
+  begin
+   v:=s;
+   result:=v;
+  end;
+
+end;
+
+function TIGTagHDA_Proxy.GetWriteable: boolean;
+var s:widestring;
+    v:variant;
+begin
+ result:=false;
+ if GetProperty('Writeable',s) then
+  begin
+   v:=s;
+   result:=v;
+  end;
+
+end;
+
+procedure TIGTagHDA_Proxy.SetDataType(const Value: word);
+begin
+SetProperty('DataType',inttostr(Value));
+end;
+
+procedure TIGTagHDA_Proxy.SetReadable(const Value: boolean);
+begin
+ if Value then
+  SetProperty('Readable','True')
+ else
+  SetProperty('Readable','False');
+
+end;
+
+procedure TIGTagHDA_Proxy.SetWriteable(const Value: boolean);
+begin
+ if Value then
+  SetProperty('Writeable','True')
+ else
+  SetProperty('Writeable','False');
+
+end;
+
+
+{ TIGTagHDA_Proxy_INFO }
+
+class function TIGTagHDA_Proxy_INFO.ChildrenInfo(
+  Index: Integer): PGsvObjectInspectorPropertyInfo;
+const
+  DSK: array[0..4] of TGsvObjectInspectorPropertyInfo = (
+    ( Name: 'NameObj';   Caption: 'Имя'; Kind: pkText),
+    ( Name: 'DataType';  NestedClass: THADataType_INFO),
+    ( Name: 'Readable';  Caption: 'Права на чтение'; Kind: pkBoolean ),
+    ( Name: 'Writeable'; Caption: 'Права на запись'; Kind: pkBoolean ),
+    ( Name: 'Description'; Caption: 'Описание'; Kind: pkTextDialog)
+    );
+begin
+  if Index <= High(DSK) then Result := @DSK[Index]
+  else                       Result := nil;
+
+end;
+
+{$ENDIF}
+
+
+initialization
+  GsvRegisterTypesInfo([THADataType_INFO,
+                        THATemplate_Proxy_INFO,
+                        TIGTag_Proxy_INFO,
+                        TIGProp_Proxy_INFO,
+                        THABase_Proxy_INFO,
+                        TIGCommand_Proxy_INFO,
+                        TIGDevice_Proxy_INFO,
+                        THAEvent_Proxy_INFO,
+                        THATypeEvent_INFO,
+                        THACatEvent_Proxy_INFO,
+                        THALinkProp2_Proxy_INFO,
+                        TIGTimer_Proxy_INFO
+                        {$IFDEF HDAINTERFACE}
+                        ,TIGTagHDA_Proxy_INFO
+                        {$ENDIF}]);
+end.

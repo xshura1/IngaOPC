@@ -1,0 +1,764 @@
+unit HA_Glav;
+
+interface
+
+uses SvcMgr,
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, Menus, StdCtrls, ImgList, VirtualTrees, ComCtrls, ToolWin,
+  ExtCtrls,ha_types, SynEdit,ha_wmConst,ShellAPI,HA_CustomFM2,hadaimp,
+  IngaOPC_tlb,inifiles,ha_explorer;
+
+type
+
+ // TViewFormArray=array [1..9] of TfmCustom2;
+
+  TfmGlav = class(TForm)
+    TrayPopupMenu: TPopupMenu;
+    Reset1: TMenuItem;
+    Close1: TMenuItem;
+    IMStatSRV: TImageList;
+    ShutDown2: TMenuItem;
+    Timer1: TTimer;
+    N5: TMenuItem;
+    N7: TMenuItem;
+    New1: TMenuItem;
+    N2: TMenuItem;
+    N3: TMenuItem;
+    N4: TMenuItem;
+    N1: TMenuItem;
+    N6: TMenuItem;
+    N8: TMenuItem;
+    N9: TMenuItem;
+    N11: TMenuItem;
+    N12: TMenuItem;
+    N13: TMenuItem;
+    N14: TMenuItem;
+    N10: TMenuItem;
+    N15: TMenuItem;
+    N16: TMenuItem;
+    N17: TMenuItem;
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure ShutDown1Click(Sender: TObject);
+    procedure TrayPopupMenuPopup(Sender: TObject);
+    procedure Reset1Click(Sender: TObject);
+    procedure Close1Click(Sender: TObject);
+    procedure N3Click(Sender: TObject);
+    procedure New1Click(Sender: TObject);
+    procedure N6Click(Sender: TObject);
+    procedure N8Click(Sender: TObject);
+    procedure N9Click(Sender: TObject);
+    procedure N14Click(Sender: TObject);
+    procedure New1MeasureItem(Sender: TObject; ACanvas: TCanvas; var Width,
+      Height: Integer);
+    procedure N15Click(Sender: TObject);
+    procedure N16Click(Sender: TObject);
+    procedure N17Click(Sender: TObject);
+  private
+    { Private declarations }
+
+    
+    FIconData:TNotifyIconData;
+    fNeedClose:boolean;
+    fServerStatus:integer;
+    fServerRW:boolean;
+    fStatIcon:TIcon;
+    FFromService: Boolean;
+    fMaxWidthItemMenu:integer;
+    fMaxWidthConfigMenu:integer;
+   // fViewForms:TViewFormArray;
+
+    fDebugWindowList:TList;
+
+    fmTemplates:TfmCustom2;
+    fmConfigs:TfmCustom2;
+   // fmDebugMan:TfmCustom2;
+
+    procedure OnCloseDebugWindow(Sender: TObject; var Action: TCloseAction);
+
+    procedure ShowDebugWindow(id:integer);
+    procedure CloseDebugWindows;
+  //  function CloseServer:boolean;
+
+    function StatusToIndexImage(Status:integer):integer;
+    procedure OnStateOPCMan(var Msg:TMessage); message wm_StateOPCMan;
+    procedure OnChangeTrayIcon(var Msg:TMessage); message wm_ChangeTrayIcon;
+    procedure UIInitialize(var Message: TMessage); message UI_INITIALIZE;
+
+
+    procedure SaveDefaultConfig(FileName:string);
+    function GetDefaultConfig(var FileName:string):boolean;
+
+    procedure MenuItemConfigClick(Sender: TObject);
+    procedure MenuItemConfigDrawItem(Sender: TObject; ACanvas: TCanvas;
+                                     ARect: TRect; Selected: Boolean);
+
+    procedure MenuItemDriversDrawItem(Sender: TObject; ACanvas: TCanvas;
+                                      ARect: TRect; Selected: Boolean);
+
+    procedure MenuItemConfigMeasureItem(Sender: TObject; ACanvas: TCanvas;
+                                        var Width, Height: Integer);
+
+    procedure MenuItemDialogDrvClick(Sender: TObject);
+  public
+    { Public declarations }
+    procedure Initialize(FromService: Boolean);
+    procedure GetConfigsServer;
+  end;
+
+ TIngaOPCService = class(TService)
+  protected
+    procedure Start(Sender: TService; var Started: Boolean);
+    procedure Stop(Sender: TService; var Stopped: Boolean);
+    procedure OnAfterInstall(Sender: TService);
+    procedure OnAfterUnInstall(Sender: TService);
+
+  public
+    function GetServiceController: TServiceController; override;
+    constructor CreateNew(AOwner: TComponent; Dummy: Integer = 0); override;
+  end;
+
+
+var
+  fmGlav: TfmGlav;
+  IngaOPCService:TIngaOPCService;
+implementation
+  uses ha_utils,ha_classes,ha_opcman,
+       activeX, ha_regserver,ha_log,opcda,HA_fmViewCache,
+       HA_fmViewLog,
+       HA_fmViewDriverData,
+       HA_fmViewDynList,
+       HA_fmViewClients,
+       HA_fmGlobalParams,
+       HA_XMLData,
+       HA_DAGROUP,opctypes,
+       HA_About,
+       HA_fmUnloader, HA_DllManager,
+       HA_fmDriverLinks;
+{$R *.dfm}
+
+
+
+
+procedure TfmGlav.FormCreate(Sender: TObject);
+var s:string;
+
+begin
+ s:='';
+
+ fStatIcon:=TIcon.Create;
+ fStatIcon.Width:=16;
+ fStatIcon.Height:=16;
+
+ fDebugWindowList:=TList.Create;
+
+
+
+ fNeedclose:=false;
+ XData:=THAData.Create(ExtractFilePath(ParamStr(0)));
+ try
+     GetConfigsServer;
+     OPCMan:=THAOPCMan.Create(true);
+     OPCMan.HWNDGlav:=Handle;
+     IMStatSRV.GetIcon(0,Application.Icon);
+     With FIconData do
+      begin
+        cbSize:=SizeOf(FIconData);
+        Wnd:=Handle;
+        uID:=100;
+        uFlags:=NIF_MESSAGE+NIF_ICON+NIF_TIP;
+        uCallbackMessage:=wm_ChangeTrayIcon;
+        hIcon:=Application.Icon.Handle;
+        StrPCopy(szTip,Application.Title)
+      end;
+ except
+  on E:Exception do
+   AddLog(1,'Create',e_fail ,e.Message);
+ end;
+
+ Shell_NotifyIcon(NIM_ADD,@FIconData);
+end;
+
+procedure TfmGlav.FormDestroy(Sender: TObject);
+begin
+ fDebugWindowList.Free;
+ XData.Free;
+ OPCMan.TerminateAndFree;
+ OPCMan:=nil;
+ fStatIcon.Free;
+ Shell_NotifyIcon(NIM_DELETE,@FIconData);
+end;
+
+
+procedure TfmGlav.Timer1Timer(Sender: TObject);
+const
+ fmt='State: %s   Start Time: %s   Servers: %d   Groups: %d';
+begin
+ IMStatSrv.GetIcon(StatusToIndexImage(fServerStatus),fStatIcon);
+ FIconData.hIcon:=fStatIcon.Handle;
+ Shell_NotifyIcon(NIM_MODIFY,@FIconData);
+ fServerRW:=false;
+ Timer1.Enabled:=false;
+end;
+
+procedure TfmGlav.OnStateOPCMan(var Msg: TMessage);
+begin
+ if (fServerStatus=som_IsStopped) and (msg.WParam<>som_IsReseting) then exit;
+ if (Msg.WParam<>som_RWDevice) and (not fServerRW) then
+  begin
+   fServerStatus:=Msg.WParam;
+   IMStatSrv.GetIcon(StatusToIndexImage(Msg.WParam),fStatIcon);
+   FIconData.hIcon:=fStatIcon.Handle;
+   Shell_NotifyIcon(NIM_MODIFY,@FIconData);
+  end
+ else
+  if fServerRW then
+   begin
+    Timer1.Enabled:=false;
+    Timer1.Enabled:=true;
+   end
+  else
+   begin
+    IMStatSrv.GetIcon(StatusToIndexImage(Msg.WParam),fStatIcon);
+    FIconData.hIcon:=fStatIcon.Handle;
+    Shell_NotifyIcon(NIM_MODIFY,@FIconData);
+    fServerRW:=true;
+   end;
+end;
+
+procedure TfmGlav.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+ if fNeedclose then
+  action:=caFree
+ else
+  action:=caNone;
+
+ if fmConfigs<>nil then
+  fmConfigs.Close;
+ if fmTemplates<>nil then
+  fmTemplates.Close;
+
+ CloseDebugWindows;
+
+end;
+
+
+procedure TfmGlav.OnChangeTrayIcon(var Msg: TMessage);
+var P:TPoint;
+Begin
+       Case Msg.lParam of
+           WM_RBUTTONUP,
+           WM_LBUTTONUP: // Показываем pop-up меню
+               begin
+                 SetForegroundWindow(Handle);
+                 GetCursorPos(P);
+                 TrayPopupMenu.Popup(P.X,P.Y);
+                 PostMessage(Handle,WM_NULL,0,0)
+               end;
+         //   WM_LBUTTONDBLCLK:New1Click(nil);//ShowViewForms(6);
+          end;
+end;
+
+
+procedure TfmGlav.ShutDown1Click(Sender: TObject);
+begin
+// if MessageBox(handle,'Отключить всех клиентов ?','Запрос',MB_YESNO or MB_ICONQUESTION or MB_APPLMODAL)=IDYES	then
+  //opcman.ShutDownServer(0,false);
+  UnloadClients(Handle);
+end;
+
+
+{function TfmGlav.CloseServer:boolean;
+const
+ ShutDownTimeOut=10000;
+
+var AllCount,NotSupportCount:integer;
+    i,j:cardinal;
+    s,s1,w:string;
+begin
+ if OPCMan<>nil then
+  OPCMan.CacheDebugMode:=cdm_Normal;
+ fLocalClient:=nil;
+ result:=true;
+ AllCount:=OPCMan.CountServers;
+ s:='';
+ if AllCount>0 then
+  begin
+   NotSupportCount:=OPCMan.CountServersWithNotIOPCShutdown;
+
+   if NotSupportCount>0 then
+    begin
+     w:=inttostr(NotSupportCount);
+     w:=copy(w,length(w),1);
+     case strtoint(w) of
+      1:s1:='клиент';
+      2,3,4:s1:='клиента';
+      5,6,7,8,9,0:s1:='клиентов';
+     end;
+     s:=#13#10+#13#10+'Примечание.'+#13#10+inttostr(NotSupportCount)+' '+s1+' не будут отсоединены автоматически.';
+    end;
+   if MessageBox(handle,PChar('К серверу подключены клиенты. Закрыть сервер?'+s),'Информация',MB_YESNO or MB_ICONQUESTION or MB_APPLMODAL	)=IDYES	then
+    begin
+     UnloadClients;
+    end
+   else
+    result:=false;
+
+  end;
+
+
+end;
+ }
+
+procedure TfmGlav.TrayPopupMenuPopup(Sender: TObject);
+var st:TStringList;
+    i:integer;
+    mi:TMenuItem;
+  //  InUseDrv:boolean;
+begin
+ fMaxWidthItemMenu:=0;
+ if OPCMan.AddedItems then
+  begin
+   // N12.Enabled:=false;
+
+    Reset1.Enabled:=false;
+    ShutDown2.Enabled:=false;
+  end
+ else
+  begin
+   //N12.Enabled:=true;
+   Reset1.Enabled:=true;
+   ShutDown2.Enabled:=OPCMan.CountServers>0;
+  end;
+
+ st:=TStringList.Create;
+ try
+  N8.Clear;
+  OPCMan.DLLMan.GetDrivers(st,false);
+ // OPCMan.DLLMan.GetDriversInUse(st1);
+
+  for i:=0 to st.Count-1 do
+   begin
+    mi:=TMenuItem.Create(n8);
+    mi.Caption:=st[i];
+    mi.Tag:=dword(st.Objects[i]);
+    mi.OnClick:=MenuItemDialogDrvClick;
+    mi.OnDrawItem:=MenuItemDriversDrawItem;
+    mi.AutoHotkeys:=maManual;
+    n8.Add(mi);
+   end;
+
+
+ finally
+  st.Free;
+ end;
+end;
+
+procedure TfmGlav.Reset1Click(Sender: TObject);
+begin
+ OPCMan.LoadNewConfig;
+end;
+
+procedure TfmGlav.Close1Click(Sender: TObject);
+begin
+ if not UnloadClients(Handle) then exit;
+ fNeedclose:=true;
+ Close;
+end;
+
+
+
+function TfmGlav.StatusToIndexImage(Status: integer): integer;
+begin
+ case Status of
+  som_NoInit     :result:=0;
+  som_IsReseting :result:=1;
+  som_IsRunning  :if OPCMan.CountServers=0 then
+                   result:=2
+                  else
+                   result:=4;
+  som_RWDevice   :if OPCMan.CountServers=0 then
+                   result:=3
+                  else
+                   result:=5;
+  som_IsStopped  :result:=6;
+  //som_IsClosed   :result:=6;
+  else
+   result:=-1; 
+ end;
+
+end;
+
+{ TIngaOPCService }
+
+procedure ServiceController(CtrlCode: DWord); stdcall;
+begin
+  IngaOPCService.Controller(CtrlCode);
+end;
+
+
+procedure TIngaOPCService.OnAfterInstall(Sender: TService);
+begin
+ RegisterTheServer(hats_DA,true);
+end;
+
+procedure TIngaOPCService.OnAfterUnInstall(Sender: TService);
+begin
+ UnRegisterTheServer(hats_DA);
+end;
+
+constructor TIngaOPCService.CreateNew(AOwner: TComponent; Dummy: Integer);
+begin
+  inherited CreateNew(AOwner, Dummy);
+  AllowPause := False;
+  Interactive := True;
+  DisplayName := 'IngaOPCDA Server';
+  Name := 'IngaOPCServer';
+  OnStart := Start;
+  OnStop := Stop;
+  AfterInstall := OnAfterInstall;
+  AfterUninstall:= OnAfterUnInstall;
+end;
+
+function TIngaOPCService.GetServiceController: TServiceController;
+begin
+ Result := ServiceController;
+end;
+
+procedure TIngaOPCService.Start(Sender: TService; var Started: Boolean);
+begin
+  PostMessage(fmGlav.Handle, UI_INITIALIZE, 1, 0);
+  Started := True;
+end;
+
+procedure TIngaOPCService.Stop(Sender: TService; var Stopped: Boolean);
+begin
+  PostMessage(fmGlav.Handle, WM_QUIT, 0, 0);
+  Stopped := True;
+
+end;
+
+procedure TfmGlav.UIInitialize(var Message: TMessage);
+begin
+ Initialize(Message.WParam <> 0);
+end;
+
+procedure TfmGlav.Initialize(FromService: Boolean);
+begin
+ fFromService:=FromService;
+ Close1.Visible:=not fFromService;
+end;
+
+procedure TfmGlav.GetConfigsServer;
+var i:integer;
+    s:string;
+    St:TStringList;
+    MI:TMenuItem;
+begin
+ fMaxWidthConfigMenu:=0;
+ for i:=N2.Count-3 downto 0 do
+  N2.Delete(i);
+
+ St:=TStringList.Create;
+ try
+  XData.GetAllConfigs(st);
+
+
+
+  GetDefaultConfig(s);
+  for i:=0 to St.Count-1 do
+   begin
+    MI:=TMenuItem.Create(self);
+    MI.Caption:=ST[i];
+    MI.GroupIndex:=1;
+    MI.RadioItem:=true;
+    MI.AutoCheck:=true;
+    MI.OnClick:=MenuItemConfigClick;
+    MI.OnDrawItem:=MenuItemConfigDrawItem;
+    MI.OnMeasureItem:=MenuItemConfigMeasureItem;
+    MI.AutoHotkeys:=maManual;
+    if CompareText(s,ST[i])=0 then
+     MI.Checked:=true;
+
+    N2.Insert(i,MI);
+   end;
+ finally
+  St.Free;
+ end;
+
+
+
+
+end;
+
+procedure TfmGlav.SaveDefaultConfig(FileName: string);
+var ini:TIniFile;
+begin
+
+ ini:=TIniFile.Create(ChangeFileExt(ParamStr(0),'.ini'));
+ try
+  ini.WriteString('Config','DefaultConfig',FileName);
+ finally
+  ini.Free;
+ end;
+end;
+
+procedure TfmGlav.MenuItemConfigClick(Sender: TObject);
+var i:integer;
+begin
+ for i:=0 to N2.Count-1 do
+  if N2.Items[i].Checked then
+   begin
+    SaveDefaultConfig(N2.Items[i].Caption);
+    break;
+   end;
+end;
+
+function TfmGlav.GetDefaultConfig(var FileName: string): boolean;
+var ini:TIniFile;
+begin
+ result:=true;
+ ini:=TIniFile.Create(ChangeFileExt(ParamStr(0),'.ini'));
+ try
+  FileName:=ini.ReadString('Config','DefaultConfig','');
+  if FileName='' then
+   result:=false;
+ finally
+  ini.Free;
+ end;
+
+end;
+
+procedure TfmGlav.N3Click(Sender: TObject);
+begin
+ if fmConfigs=nil then
+  fmConfigs:=TfmExplorer.Create(fmConfigs,em_Controllers);
+ fmConfigs.Show;
+end;
+
+procedure TfmGlav.New1Click(Sender: TObject);
+begin
+ if fmTemplates=nil then
+  fmTemplates:=TfmExplorer.Create(fmTemplates,em_Templates);
+ fmTemplates.Show;
+end;
+
+procedure TfmGlav.N6Click(Sender: TObject);
+begin
+ with TfmAbout.Create(application) do
+  if showmodal=mrOk then
+   GlobalParams.SaveParams;
+end;
+
+procedure TfmGlav.N8Click(Sender: TObject);
+begin
+// with TfmGlobalParams.Create(Application) do
+//  showmodal;
+end;
+
+procedure TfmGlav.N9Click(Sender: TObject);
+begin
+{ if fmDebugMan=nil then
+  N1Click(nil);
+ TfmDebugMan(fmDebugMan).ShowViewForm(TMenuItem(Sender).Tag);}
+ ShowDebugWindow(TMenuItem(Sender).Tag);
+end;
+
+procedure TfmGlav.N14Click(Sender: TObject);
+var s:string;
+begin
+ s:=ExtractFilePath(ParamStr(0))+'IngaOPCHelp.chm'; //'www.integralplus.ru'; //
+ ShellExecute(Handle,'open',PChar(s),nil,nil,SW_SHOWNORMAL);
+
+end;
+
+procedure TfmGlav.MenuItemDialogDrvClick(Sender: TObject);
+var mi:TMenuItem;
+begin
+ mi:=TMenuItem(Sender);
+ OPCMan.DLLMan.ShowDialog(mi.Tag);
+end;
+
+procedure TfmGlav.MenuItemConfigDrawItem(Sender: TObject; ACanvas: TCanvas;
+  ARect: TRect; Selected: Boolean);
+var mi:TMenuItem;
+    ht,wt,wi:integer;
+    currconf:boolean;
+begin
+ mi:=TMenuItem(Sender);
+ ht:=ACanvas.TextHeight(mi.Caption);
+ wt:=ACanvas.TextWidth(mi.Caption);
+ currconf:=false;
+ if CompareText(OPCMan.CurrentConfig,mi.Caption)=0 then
+  begin
+   ACanvas.Font.Style:=ACanvas.Font.Style+[fsBold];
+   currconf:=true;
+  end
+ else
+  ACanvas.Font.Style:=[];
+
+ if Selected then
+  begin
+   ACanvas.Font.Color:=clWindow;
+
+  end
+ else
+  begin
+   if mi.Checked then
+    begin
+     if not currconf then
+       ACanvas.Font.Color:=clBlue;
+    end
+   else
+    ACanvas.Font.Color:=clWindowText;
+
+   ACanvas.Brush.Color:=clBtnFace;
+  end;
+ ACanvas.FillRect(ARect);
+ //(((ARect.Right-ARect.Left)-wt) div 2)
+ wi:=0;
+ if TrayPopupMenu.Images<>nil then
+   wi:=TrayPopupMenu.Images.Width;
+ 
+ ACanvas.TextOut(ARect.Left+6+wi,ARect.Top+(((ARect.Bottom-ARect.Top)-ht) div 2),mi.Caption);
+
+end;
+
+
+
+procedure TfmGlav.New1MeasureItem(Sender: TObject; ACanvas: TCanvas;
+  var Width, Height: Integer);
+var mi:TMenuItem;
+    wt,wi:integer;
+begin
+ mi:=TMenuItem(Sender);
+ wt:=ACanvas.TextWidth(mi.Caption);
+ if wt>fMaxWidthItemMenu then
+  fMaxWidthItemMenu:=wt;
+ wi:=0;
+ if TrayPopupMenu.Images<>nil then
+  wi:=TrayPopupMenu.Images.Width;
+ Width:=fMaxWidthItemMenu+10+wi;
+
+end;
+
+procedure TfmGlav.MenuItemConfigMeasureItem(Sender: TObject;
+  ACanvas: TCanvas; var Width, Height: Integer);
+var mi:TMenuItem;
+    wt,wi:integer;
+begin
+ mi:=TMenuItem(Sender);
+ wt:=ACanvas.TextWidth(mi.Caption);
+ if wt>fMaxWidthConfigMenu then
+  fMaxWidthConfigMenu:=wt;
+ wi:=0;
+ if TrayPopupMenu.Images<>nil then
+  wi:=TrayPopupMenu.Images.Width;
+ Width:=fMaxWidthConfigMenu+10+wi;
+
+end;
+
+procedure TfmGlav.N15Click(Sender: TObject);
+var i:integer;
+begin
+ for i:=1 to 10 do
+  ShowDebugWindow(i);
+end;
+
+procedure TfmGlav.OnCloseDebugWindow(Sender: TObject;
+  var Action: TCloseAction);
+begin
+ fDebugWindowList.Remove(Sender);
+ Action:=caFree;
+end;
+
+
+procedure TfmGlav.ShowDebugWindow(id: integer);
+var fm:TForm;
+    i:integer;
+begin
+ fm:=nil;
+ for i:=0 to fDebugWindowList.Count-1 do
+  if TForm(fDebugWindowList[i]).Tag=id then
+   begin
+    fm:=fDebugWindowList[i];
+    break;
+   end;
+
+
+ if fm=nil then
+  begin
+   case id of
+     2:fm:=TfmViewCache.Create(nil);
+     3:fm:=TfmViewLog.Create(nil);
+     5:fm:=TfmViewDriverData.Create(nil);
+    // 8:fm:=TfmViewDynList.Create(nil);
+     9:fm:=TfmViewClients.Create(nil);
+   end;
+   if fm=nil then exit;
+
+   fDebugWindowList.Add(fm);
+   fm.Tag:=id;
+   fm.OnClose:=OnCloseDebugWindow;
+   fm.Show;
+  end
+ else
+   fm.Show;
+
+end;
+
+procedure TfmGlav.MenuItemDriversDrawItem(Sender: TObject;
+  ACanvas: TCanvas; ARect: TRect; Selected: Boolean);
+var mi:TMenuItem;
+    ht,wt,wi:integer;
+    InUseDrv:boolean;
+begin
+ mi:=TMenuItem(Sender);
+ ht:=ACanvas.TextHeight(mi.Caption);
+ wt:=ACanvas.TextWidth(mi.Caption);
+ InUseDrv:=OPCMan.DLLMan.DriverInUse(mi.Tag);
+
+ if InUseDrv then
+   ACanvas.Font.Style:=ACanvas.Font.Style+[fsBold]
+ else
+   ACanvas.Font.Style:=[];
+
+ if Selected then
+   ACanvas.Font.Color:=clWindow
+ else
+  begin
+   ACanvas.Font.Color:=clWindowText;
+   ACanvas.Brush.Color:=clBtnFace;
+  end;
+ ACanvas.FillRect(ARect);
+
+ //(((ARect.Right-ARect.Left)-wt) div 2)
+ wi:=0;
+ if TrayPopupMenu.Images<>nil then
+   wi:=TrayPopupMenu.Images.Width;
+ ACanvas.TextOut(ARect.Left+6+wi,ARect.Top+(((ARect.Bottom-ARect.Top)-ht) div 2),mi.Caption);
+
+
+end;
+
+procedure TfmGlav.N16Click(Sender: TObject);
+begin
+ CloseDebugWindows;
+end;
+
+procedure TfmGlav.CloseDebugWindows;
+var i:integer;
+begin
+ for i:=fDebugWindowList.Count-1 downto 0 do
+   TForm(fDebugWindowList[i]).Close;
+
+end;
+
+procedure TfmGlav.N17Click(Sender: TObject);
+begin
+ TfmDriverLinks.Create(Application).ShowModal;
+end;
+
+end.

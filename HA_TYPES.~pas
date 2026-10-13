@@ -1,0 +1,203 @@
+unit HA_TYPES;
+
+interface
+ uses Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+      Dialogs, Menus;
+
+ const
+  BranchSep='\';
+
+  ClassFolderTemplate  = 5;
+  ClassTemplate        = 10;
+
+  ClassFolderTags      = 20;
+  ClassFolderProps     = 25;
+  ClassFolderCommands  = 30;
+  ClassFolderScripts   = 35;
+  ClassFolderController = 40;
+
+  //reserved up 50
+  ClassFolder          = 50;
+
+
+  ClassTag      = 120;
+  ClassProp     = 125;
+  ClassCommand  = 130;
+  ClassScript   = 135;
+  ClassController   = 140;
+
+ // ClassOrder    = 55;
+ // ClassDRV      = 56;
+ // ClassContr    = 57;
+  HighClassFolders=100;
+
+  RegPScript='HAOBJ\d+_\d+'; //'(HAOBJ\d+_\d+_\d+)|(HAOBJ\d+_\d+)'
+  FormatPScript='HAOBJ%d_%d';
+  RegScript='\["[^"\]]*"\]';
+  FormatScript='["%s"]';
+
+ type
+  TOID=type integer;
+  TTypeUpdOBJ=(tu_New,tu_Upd,tu_Del);
+
+  PDataItem=^TDataItem;
+  TDataItem=record
+   OID:TOID;
+   ParentId:TOID;
+   ClassID:TOID;
+   Name:widestring;
+   Selected:boolean;         // 0 bit - Checked; 1 bit - (0-HasChildren)
+   ChildCount:DWord;
+
+  end;
+
+  TDataItems=array of TDataItem;
+
+  // маска предназначена для определения полей в записи, которые изменились при
+  // множественном редактировании объектов
+  PMaskUpdateFieldData=^TMaskUpdateFieldData;
+  TMaskUpdateFieldData=record
+   MaskName:string[64];
+   MaskGlobal:dword; // пока использован только первый бит
+                     // указывает побитно какие поля в глобальных данных изменились
+                     // (порядковый номер поля совпадает с номером бита в маске)
+                     // отсчет ведется от нуля
+
+   MaskLocal:dword;  // указывает побитно какие поля в данных текущего объекта изменились
+                     // (порядковый номер поля совпадает с номером бита в маске)
+                     // отсчет ведется от нуля
+                     // если в объекте есть поле типа Flags, то оно считается за несколько полей
+  end;
+
+  TTemplateData=record
+   Description:string[255];
+  end;
+
+ { TFolderData=record
+   OID:TOID;
+   ParentId:TOID;
+   Name:string[64];
+  end; }
+
+  PTagDataPropVal=^TTagDataPropVal;
+  TTagDataPropVal=record
+   OIDProp:TOID;
+   Val    :variant;
+  end;
+
+  const
+
+   tf_Read          =$01;
+   tf_VisibleOPC    =$02;
+   tf_InitAddContr  =$04;
+   tf_Calc          =$08;
+   tf_Write         =$10;
+
+  type
+
+
+  PTagData=^TTagData;
+  TTagData=record
+   TypeTag:word;                       //0
+  // LengthArray:integer;
+   Flags:Word;   // see const tf_      //1..17
+   OIDScriptW:TOID;                    //18
+   OIDScriptR:TOID;                   //19
+   Props:TList;                        //20
+   OIDScriptC:TOID;                    //21
+  end;
+
+  PPropData=^TPropData;
+  TPropData=record
+   PropID:DWord;
+   TypeProp:word;
+   LengthArray:integer;
+   Flags:Word;   // $04 - VisibleOPC
+   description:string[255];
+  end;
+
+ TCommandData=record
+   Flags:DWord;
+   NoCommand:string[16];
+ //  NoR:string[16];
+   CountW:integer;
+   CountR:integer;
+  // DopParam:dword;
+   OIDScriptBeforeW:TOID;
+   OIDScriptAfterR:TOID;
+ end;
+
+ THATypeScript=(ts_OnWriteTag,ts_OnBeforeWrite, ts_OnAfterRead,ts_OnCalc,ts_OnChangedGroup,ts_OnReadTag);
+ THATypesScripts= set of THATypeScript;
+
+ PScriptLink=^TScriptLink;
+ TScriptLink=record
+  OID:TOID;
+  ClassID:TOID;
+  //Dop:integer;
+ end;
+
+ TScriptData=record
+   TypeScript :THATypeScript;   //0
+   Active     :boolean;         //1
+   Script     :TStrings;        //2
+  end;
+
+ TControllerData=record
+   //OID:TOID;
+   //ParentId:TOID;
+   //Name:string[64];
+   Dop :string[32];
+   OIDTemplate:TOID;
+   HachDrv:cardinal;
+   Adress:string[64];
+ end;
+
+ PHAGlobalData=^THAGlobalData;
+ THAGlobalData=record
+   OID:TOID;
+   ParentId:TOID;
+   Name:string[64];
+   case ClassID:integer of
+     ClassTemplate:(Template:TTemplateData);
+     ClassTag     :(Tag     :TTagData);
+     ClassProp    :(Prop    :TPropData);
+     ClassCommand :(Command :TCommandData);
+     ClassScript  :(Script  :TScriptData);
+     ClassController:(Controller:TControllerData);
+
+ end;
+
+
+ function DecodePSVar(PSVar:string; var ClassId,OID:integer):boolean;
+implementation
+
+uses HA_fmCommand;
+
+ function DecodePSVar(PSVar:string; var ClassId,OID:integer):boolean;
+ var s,sps:string;
+
+ begin
+  result:=false;
+  ClassId:=0;
+  OID:=0;
+  if pos('HAOBJ',psvar)<>1 then exit;
+  sps:=copy(psvar,6,length(psvar));
+  if pos('_',sps)=0 then exit;
+  s:=copy(sps,1,pos('_',sps)-1);
+  classid:=strtoint(s);
+  delete(sps,1,pos('_',sps));
+  if pos('_',sps)=0 then
+   OID:=strtoint(sps);
+{  else
+   begin
+    s:=copy(sps,1,pos('_',sps)-1);
+    oid:=strtoint(s);
+    delete(sps,1,pos('_',sps));
+    Dop:=strtoint(sps);
+   end; }
+ result:=true;
+
+ end;
+
+end.

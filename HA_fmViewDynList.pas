@@ -1,0 +1,206 @@
+unit HA_fmViewDynList;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs,  StdCtrls, ExtCtrls,ha_wmconst, ComCtrls,
+  VirtualTrees,HA_Classes, HA_CustomFM2,IniFiles;
+
+type
+  TfmViewDynList = class(TForm)
+    Panel1: TPanel;
+    TV: TVirtualStringTree;
+    procedure FormCreate(Sender: TObject);
+    procedure TVGetText(Sender: TBaseVirtualTree; Node: PVirtualNode;
+      Column: TColumnIndex; TextType: TVSTTextType;
+      var CellText: WideString);
+    procedure FormDestroy(Sender: TObject);
+  private
+    { Private declarations }
+    procedure wmDynList(var Msg:TMessage); message wm_DynList;
+    procedure LoadIniParams;
+    procedure SaveIniParams;
+  public
+    { Public declarations }
+  end;
+
+
+implementation
+ uses ha_opcman;
+{$R *.dfm}
+
+ type
+  PDynData=^TDynData;
+  TDynData=record
+   Command:THAPSCommand;
+{   //ClientName :widestring;
+   DeviceName :widestring;
+   Command    :widestring;
+   Handle     :word;
+   CountW     :integer;
+   CountR     :integer;
+   Data       :array of byte;
+   Count      :integer;
+   Priority   :word;
+   State      :THAPSCommandState;}
+  end;
+
+
+
+ // Msg.WParam - ссылка на команду
+ // Msg.LParamLo - положение в очереди команд
+ // Msg.LParamHi - общее кол-во команд в очереди
+procedure TfmViewDynList.wmDynList(var Msg: TMessage);
+var p:PDynData;
+    C:THAPSCommand;
+    i,j:integer;
+    n:PVirtualNode;
+
+begin
+  if Msg.LParamHi=0 then
+   begin
+    TV.Clear;
+    exit;
+   end;
+
+  if Msg.WParam=0 then exit;
+  C:=THAPSCommand(Msg.WParam);
+
+
+
+
+  if TV.RootNodeCount>Msg.LParamHi then
+   begin
+     while TV.RootNodeCount>Msg.LParamHi do
+      begin
+        TV.DeleteNode(TV.GetLast);
+      end;
+   end
+  else
+   if TV.RootNodeCount<Msg.LParamHi then
+    begin
+     j:=Msg.LParamHi-TV.RootNodeCount;
+     for i:=0 to j-1 do
+      TV.AddChild(nil);
+    end;
+
+  N:=TV.GetFirst;
+
+  for i:=0 to Msg.LParamLo-1 do
+   N:=TV.GetNext(N);
+
+  if n=nil then exit;
+  p:=TV.GetNodeData(N);
+  p^.Command:=c;
+  //.Controller.Template.NameObj+':'+C.ParentCommand.NameObj;
+  {p^.CountW:=c.ParentCommand.CountW;
+  p^.DeviceName:=c.Controller.NameObj;
+  p^.Priority:=c.Priority;
+  p^.State:=c.State;
+   }
+  TV.Refresh;
+
+
+{ case Msg.LParam of
+  0:begin
+     lb.Clear;
+     Msg.Result:=TrackBar1.Position;
+     lb.Items.BeginUpdate;
+    end;
+  1:lb.Items.Add(string(Msg.WParam));
+  2:Msg.Result:=TrackBar1.Position;
+  3:lb.Items.EndUpdate;
+ end;
+ }
+
+end;
+
+procedure TfmViewDynList.FormCreate(Sender: TObject);
+begin
+  inherited;
+ TV.NodeDataSize:=sizeof(TDynData);
+ LoadIniParams;
+ OPCMan.HWNDDynList:=Handle;
+
+end;
+
+procedure TfmViewDynList.TVGetText(Sender: TBaseVirtualTree;
+  Node: PVirtualNode; Column: TColumnIndex; TextType: TVSTTextType;
+  var CellText: WideString);
+var p:PDynData;
+    s:string;
+begin
+ 
+ p:=TV.GetNodeData(Node);
+ if p=nil then exit;
+ try
+ case Column of
+  0: CellText:=p^.Command.Controller.FullNameObj;
+  1: CellText:=inttostr(p^.Command.OID)+' '+p^.Command.Controller.Template.NameObj+':'+p^.Command.ParentCommand.NameObj;
+  2: CellText:=inttostr(p^.Command.Priority);
+  3: begin
+      case p^.Command.State of
+       cs_Wait          : s:='Вне очереди';
+       cs_BeforeWriting : s:='Ожидание подачи в драйвер';
+       cs_AfterWriting  : s:='Ожидание приема ответа от драйвера';
+       cs_Commit        : s:='Принят ответ от драйвера';
+      end;
+      CellText:=s;
+     end;
+ end;
+ except
+  CellText:='';
+ end;
+end;
+
+procedure TfmViewDynList.LoadIniParams;
+var ini:TIniFile;
+    sec:string;
+    i:integer;
+begin
+ Inherited;
+ ini:=TIniFile.Create(ChangeFileExt(ParamStr(0),'.ini'));
+ try
+   sec:=ClassName;
+   Left:=ini.ReadInteger(sec,'Left',0);
+   Top:=ini.ReadInteger(sec,'Top',0);
+   Width:=ini.ReadInteger(sec,'Width',width);
+   Height:=ini.ReadInteger(sec,'Height',height);
+   for i:=0 to TV.Header.Columns.Count-1 do
+    TV.Header.Columns[i].Width:=ini.ReadInteger(sec,'TVColumnWidth'+inttostr(i),TV.Header.Columns[i].Width);
+ finally
+  ini.Free;
+ end;
+
+end;
+
+procedure TfmViewDynList.SaveIniParams;
+var ini:TIniFile;
+    sec:string;
+    i:integer;
+begin
+ ini:=TIniFile.Create(ChangeFileExt(ParamStr(0),'.ini'));
+ try
+   sec:=ClassName;
+   ini.WriteInteger(sec,'Left',Left);
+   ini.WriteInteger(sec,'Top',Top);
+   ini.WriteInteger(sec,'Width',Width);
+   ini.WriteInteger(sec,'Height',Height);
+   for i:=0 to TV.Header.Columns.Count-1 do
+    ini.WriteInteger(sec,'TVColumnWidth'+inttostr(i),TV.Header.Columns[i].Width);
+
+ finally
+  ini.Free;
+ end;
+
+
+end;
+
+procedure TfmViewDynList.FormDestroy(Sender: TObject);
+begin
+ OPCMan.HWNDDynList:=0;
+ SaveIniParams;
+end;
+
+end.

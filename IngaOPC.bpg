@@ -1,0 +1,42 @@
+#------------------------------------------------------------------------------
+VERSION = BWS.01
+#------------------------------------------------------------------------------
+!ifndef ROOT
+ROOT = $(MAKEDIR)\..
+!endif
+#------------------------------------------------------------------------------
+MAKE = $(ROOT)\bin\make.exe -$(MAKEFLAGS) -f$**
+DCC = $(ROOT)\bin\dcc32.exe $**
+BRCC = $(ROOT)\bin\brcc32.exe $**
+#------------------------------------------------------------------------------
+PROJECTS = IngaOPC.exe CTTDriver.dll ModBus.dll GorSvet.dll GorSvetGSM.dll \
+  PSH.dll CET.dll COMPortDriver.dll
+#------------------------------------------------------------------------------
+default: $(PROJECTS)
+#------------------------------------------------------------------------------
+
+IngaOPC.exe: IngaOPC.dpr
+  $(DCC)
+
+CTTDriver.dll: dll\CTTDriver\CTTDriver.dpr
+  $(DCC)
+
+ModBus.dll: dll\Modbus\ModBus.dpr
+  $(DCC)
+
+GorSvet.dll: dll\GorSvet\GorSvet.dpr
+  $(DCC)
+
+GorSvetGSM.dll: dll\GorsvetGSM\GorSvetGSM.dpr
+  $(DCC)
+
+PSH.dll: dll\PSHDriver\PSH.dpr
+  $(DCC)
+
+CET.dll: dll\CETDriver\CET.dpr
+  $(DCC)
+
+COMPortDriver.dll: dll\COMPortDriver\COMPortDriver.dpr
+  $(DCC)
+
+

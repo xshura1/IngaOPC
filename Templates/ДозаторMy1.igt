@@ -1,0 +1,209 @@
+<Header FileDescription="IngaOPC Template File" Version="0101" Checked="-1" Script="procedure &lt;AНомер такта работы/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+var w,oldw,fw,j:word;
+    i:integer;
+
+begin
+ Tags.Filter:='Tag.PropExists(5000)=true';
+ Tags.Filtered:=true;
+ 
+ Tags.SortScript:='if Tag1.Prop[5000].value&lt;Tag2.Prop[5000].value then res:=-1'+
+                  ' else if Tag1.Prop[5000].value&gt;Tag2.Prop[5000].value then res:=1'+
+                  ' else res:=0';
+
+ Tags.Sorted:=true;
+
+// [&quot;Command_3&quot;][9]:=4000;
+ 
+ if Tags.count=0 then exit;
+ oldw:=Tags[0].Prop[5000].value;
+ j:=0;
+ fw:=oldw;
+ 
+ for i:=0 to Tags.count-1 do
+  begin
+   w:=Tags[i].Prop[5000].value;
+   if (w=oldw+1) or (oldw=w) then
+    begin
+     j:=j+1;
+     oldw:=w;
+    end
+   else
+    begin
+
+     [&quot;Command_3&quot;].count:=4;
+     [&quot;Command_3&quot;][0]:=byte(fw shr 8);
+     [&quot;Command_3&quot;][1]:=byte(fw);
+     [&quot;Command_3&quot;][2]:=byte(j shr 8);
+     [&quot;Command_3&quot;][3]:=byte(j);
+     [&quot;Command_3&quot;].Run;
+     j:=0;
+     oldw:=w;
+     fw:=w;
+    end;         
+    
+   if i=Tags.count-1 then
+    begin
+     j:=j+1;
+     [&quot;Command_3&quot;].count:=4;
+     [&quot;Command_3&quot;][0]:=byte(fw shr 8);
+     [&quot;Command_3&quot;][1]:=byte(fw);
+     [&quot;Command_3&quot;][2]:=byte(j shr 8);
+     [&quot;Command_3&quot;][3]:=byte(j);
+     [&quot;Command_3&quot;].Run;
+
+    end;
+
+
+  end;
+end;
+
+procedure &lt;AНомер такта работы/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+var w,dw:word;
+    i:integer;
+begin
+ Tags.Filter:='Tag.PropExists(5000)=true';
+ Tags.Filtered:=true;
+   
+ for i:=0 to Tags.count-1 do
+  begin
+   w:=Tags[i].Prop[5000].value;
+   dw:=Tags[i].VQT.Value;
+   [&quot;Command_6&quot;].count:=4;
+   [&quot;Command_6&quot;][0]:=byte(w shr 8);
+   [&quot;Command_6&quot;][1]:=byte(w);
+   [&quot;Command_6&quot;][2]:=byte(dw shr 8);;
+   [&quot;Command_6&quot;][3]:=byte(dw);
+   [&quot;Command_6&quot;].Run;
+  end;
+ 
+
+end;
+
+procedure &lt;Command_3/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var i,j:integer;
+    na,cr,icr,w:word;
+    
+begin
+ na:=(Command[0]*256)+Command[1]; //(DriverData[0]*256)+DriverData[1];
+ cr:=(Command[2]*256)+Command[3]; //((DriverData[2]*256)+DriverData[3]);
+
+ if DriverData.result=0 then
+  begin
+   Device.Tags.Filter:='Tag.PropExists(5000)=true';
+   Device.Tags.Filtered:=true;
+   
+
+   
+   i:=1;
+   icr:=0;
+    while icr&lt;=cr-1 do
+     begin
+       for j:=0 to Device.Tags.count-1 do
+        if Device.Tags[j].Prop[5000].value=na then
+          begin
+            case na of
+             22,23,24,25:begin
+                          w:=(DriverData[i]*256)+DriverData[i+1];
+                          if ((w shr 15) and $01)=1 then
+                           Device.Tags[j].newvalue:=(w-65536)
+                          else
+                           Device.Tags[j].newvalue:=w; 
+                          end;
+              else
+                    begin 
+                     w:=(DriverData[i]*256)+DriverData[i+1];
+                     Device.Tags[j].newvalue:=w;
+                    end;
+            end;         
+            break;
+           end;
+           i:=i+2;
+           na:=na+1;
+           icr:=icr+1;
+          end;
+  end
+ else
+  begin
+    for i:=0 to cr-1 do
+     begin
+       w:=Device.Tags.count;
+       for j:=0 to Device.Tags.count-1 do
+         if Device.Tags[j].Prop[5000].value=na then
+          begin
+           case DriverData.result of
+            1:Device.Tags[j].newquality:=OPC_QUALITY_DEVICE_FAILURE;
+            2:Device.Tags[j].newquality:=OPC_QUALITY_NOT_CONNECTED;
+           end; 
+          end; 
+       na:=na+1;
+     end;
+  end;
+
+end;
+
+
+ procedure OnAfterRead(Device:TIGDevice;
+                       Command:TIGCommand;
+                       DriverData:TIGDriverData);
+ var i:integer;
+     na:word;
+ begin
+  // параметр Command содержит пакет данных отосланный в драйвер 
+  // параметр DriverData содержит данные принятые от устройства
+ 
+      // т.к. по принятому пакету нельзя определить
+      // для какого регистра пришли данные,извлекаем
+      // его из данных на которые пришел пакет
+  
+   na:=(Command[0]*256)+Command[1];
+   
+      // ищем тэг у которого адрес регистра равен na
+   for i:=0 to Device.Tags.Count-1 do
+    if Device.Tags[i].PropExists(5000) then
+     if Device.Tags[i].Prop[5000].value=na then
+      begin
+        // в зависимости от значения DriverData.result
+        // присваиваем новое значение тэгу или изменяем его качество
+        if DriverData.result=0 then
+          Device.Tags[i].NewValue:=(DriverData[1]*256)+DriverData[2]
+        else
+          Device.Tags[i].NewQuality:=OPC_QUALITY_BAD;
+        break;    
+      end;
+ end;
+
+
+
+ procedure OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+ var i:integer;
+     wr:word;
+ begin
+  // в параметре процедуры Tags содержится массив тэгов,
+  // для которых в данный момент необходимо считать значения
+ 
+   for i:=0 to Tags.Count-1 do
+    //отбрасываем тэги, у которых нет доп. свойства с индексом 5000
+    if Tags[i].PropExists(5000) then	
+     begin
+        // задаем длину массива данных для отправки в драйвер,
+        // длину массива можно задать в инспекторе объектов,
+        // поменяв поле &quot;Кол-во байт на запись&quot;
+      [&quot;Команда на чтение&quot;].count:=4;
+
+      wr:=Tags[i].Prop[5000].Value; 
+        // по протоколу Modbus заполняем массив данных
+        // начальный адрес регистра                              
+      [&quot;Команда на чтение&quot;][0]:=byte(wr shr 8);
+      [&quot;Команда на чтение&quot;][1]:=byte(wr);
+        // кол-во регистров
+      [&quot;Команда на чтение&quot;][2]:=0;
+      [&quot;Команда на чтение&quot;][3]:=1;
+        // посылаем сформированный пакет в очередь для отправки в драйвер
+      [&quot;Команда на чтение&quot;].Run;
+     end;
+  end;
+
+
+begin
+
+end."><T10 OID="1" Name="Template" DateCreate="20.06.2006 10:15:53" DateLastUpdate="10.02.2007 13:43:56" CompileID="81" Description="шаблон для Modbus"><T20 OID="2" Name="Tags"><T120 OID="7" Name="AНомер такта работы" DataType="18" Readable="True" Writeable="False" OnRead="&lt;AНомер такта работы/&gt;OnRead" OnWrite="&lt;AНомер такта работы/&gt;OnWrite" Saved="True"><T145 OID="15" OIDLink="12" Value="03001400000002000000"/></T120><T120 OID="20" Name="Заданная масса дозы" DataType="18" Readable="True" Writeable="True" OnRead="&lt;AНомер такта работы/&gt;OnRead" OnWrite="&lt;AНомер такта работы/&gt;OnWrite"><T145 OID="21" OIDLink="12" Value="03001200000002000000"/></T120><T120 OID="8" Name="Измеренная масса" DataType="2" Readable="True" Writeable="True" OnRead="&lt;AНомер такта работы/&gt;OnRead" OnWrite="&lt;AНомер такта работы/&gt;OnWrite"><T145 OID="13" OIDLink="12" Value="03001600000002000000"/></T120><T120 OID="23" Name="Масса досыпки" DataType="18" Readable="True" Writeable="True" OnRead="&lt;AНомер такта работы/&gt;OnRead" OnWrite="&lt;AНомер такта работы/&gt;OnWrite"><T145 OID="24" OIDLink="12" Value="03001100000002000000"/></T120><T120 OID="9" Name="Набранная масса" DataType="2" Readable="True" Writeable="True" OnRead="&lt;AНомер такта работы/&gt;OnRead" OnWrite="&lt;AНомер такта работы/&gt;OnWrite"><T145 OID="14" OIDLink="12" Value="03001700000002000000"/></T120><T120 OID="6" Name="Регистр статуса" DataType="18" Readable="True" Writeable="True" OnRead="&lt;AНомер такта работы/&gt;OnRead" OnWrite="&lt;AНомер такта работы/&gt;OnWrite"><T145 OID="16" OIDLink="12" Value="03001500000002000000"/></T120><T120 OID="10" Name="Скорость набора" DataType="2" Readable="True" Writeable="True" OnRead="&lt;AНомер такта работы/&gt;OnRead" OnWrite="&lt;AНомер такта работы/&gt;OnWrite"><T145 OID="17" OIDLink="12" Value="03001800000002000000"/></T120><T120 OID="11" Name="Скорость набора управление" DataType="2" Readable="True" Writeable="True" OnRead="&lt;AНомер такта работы/&gt;OnRead" OnWrite="&lt;AНомер такта работы/&gt;OnWrite"><T145 OID="18" OIDLink="12" Value="03001900000002000000"/></T120></T20><T25 OID="3" Name="Properties"><T125 OID="27" Name="Prop" DataType="17" PropID="5001"/><T125 OID="12" Name="Адрес регистра" DataType="18" PropID="5000" UniqueValue="True"/></T25><T30 OID="4" Name="Commands"><T130 OID="28" Name="Команда на чтение" NoCommand="" CountWriteBytes="0" Param="0" OnBeforeWrite="" OnAfterRead=""/><T130 OID="19" Name="Command_3" NoCommand="3" CountWriteBytes="0" CountReadBytes="0" OnBeforeWrite="" OnAfterRead="&lt;Command_3/&gt;OnAfterRead"/><T130 OID="22" Name="Command_6" NoCommand="6" CountWriteBytes="0" CountReadBytes="0" OnBeforeWrite="" OnAfterRead=""/></T30></T10></Header>

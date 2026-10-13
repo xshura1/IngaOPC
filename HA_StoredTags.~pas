@@ -1,0 +1,872 @@
+unit HA_StoredTags;
+
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes,ha_utils,ha_xmlData;
+
+{Формат сохранненых тэгов
+ Header(5byte = 'STV11')
+ LenRecord(4byte) Flags(1byte) HashTagName(4byte) LenTagName(4byte) TagName(LenTagName) TypeTag(2byte) LenValue(4byte) Value(LenValue) Quality(2byte) TimeStamp(8byte)
+
+ если тип данных тэга строка, то поле LenValue=1 а уже в теле Value формат такой: LenStr(4byte) ValueStr.
+
+ если тип данных тэга массив, то поле LenValue=Длина массива, а в теле как обычно (если строковой массив, то см. выше.
+
+ иначе поле LenValue не заполняется !!!! (длину данных можно узнать из типа тэга}
+
+const
+ ST_Deleted=$01;
+
+type
+
+  PHAStoredRec=^THAStoredRec;
+  THAStoredRec=record
+   TagName:widestring;
+   Value:OleVariant;
+   Quality:word;
+//   YesQuality:boolean;
+   TimeStamp:TFileTime;
+//   YesTimeStamp:boolean;
+  end;
+
+  PHAHashRec=^THAHashRec;
+  THAHashRec=record
+   Hash:Longint;
+   Flags:byte;
+   Position:Int64;
+  end;
+
+
+ THAStoredTags = class(TThread)
+  private
+    { Private declarations }
+    fFileName:string;
+    //fVersion:word;
+    fErrorString:string;
+    fSt:TFileStream;
+    fHashList:TList;
+    fAddedTagsList:TList;
+    fFillHashList:boolean;
+    fCurrentRecordIsFill:dword;
+
+
+    function GetLenRecord(FirstPosition:Int64):dword;
+    function GetFlags(FirstPosition:Int64):byte;
+    function GetHashTagName(FirstPosition:Int64):integer;
+    function GetLenTagName(FirstPosition:Int64):dword;
+    function GetTagName(FirstPosition:Int64):string;
+    function GetTypeTag(FirstPosition:Int64):word;
+    function GetValue(FirstPosition:Int64):OleVariant;
+    function GetLenValue(FirstPosition:Int64):dword;
+    function GetQuality(FirstPosition:Int64):word;
+    function GetTimeStamp(FirstPosition:Int64):TFileTime;
+
+    procedure FillHashList;
+    procedure CheckAddedTags;
+    procedure ClearHashList;
+    procedure ClearAddedTagsList;
+
+    function GetHashRec(var FirstPosition:int64):THAHashRec;
+
+    procedure SearchHash(Hash:longint; var FI,EI:integer; var Ind:integer);
+
+    procedure SetFlags(FirstPosition:Int64; const Flags:byte);
+
+    function GetStoredRec(var FirstPosition:Int64):THAStoredRec;
+
+    function SetRecord(FirstPosition:Int64; TagName:string;
+                        Value:OleVariant; Quality:word; TimeStamp:TFileTime):Int64;
+
+
+
+  protected
+    procedure Execute; override;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure TerminateAndFree;
+    function SetStoredFile(FileName:string):HResult;
+
+    procedure AddRecord(TagName:string; Value:OleVariant; Quality:word; TimeStamp:FileTime);
+
+    property ErrorString:string read fErrorString;
+
+
+    function GetStoredRecByTagName(const TagName:string; var SR:THAStoredRec; out FirstPosition:Int64; out IndexHashList:integer):boolean;
+
+    property IsWork:boolean read fFillHashList;
+    property CurrentRecordIsFill:dword read fCurrentRecordIsFill;
+ end;
+
+
+
+implementation
+ uses ActiveX;
+
+ const VersionSTV=$101;
+
+ //type
+{  THAConvertRec=record
+   case byte of
+    0:  (asArrayByte:array [0..7] of byte);
+    1 : (asvt_i2   : smallint );
+    2 : (asvt_i4   : integer  );
+    3 : (asvt_r4   : single   );
+    4 : (asvt_r8   : double   );
+    5 : (asvt_cy   : currency );
+    6 : (asvt_date : TDateTime);
+    7 : (asvt_bool : bool     );
+    8 : (asvt_i1   : Shortint );
+    9 : (asvt_ui1  : byte     );
+    10: (asvt_ui2  : Word     );
+    11: (asvt_ui4  : longword );
+  end; }
+
+
+
+
+
+function MakeHash(const s: string): Longint;
+{small hash maker}
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 1 to Length(s) do
+    Result := ((Result shl 7) or (Result shr 25)) + Ord(s[I]);
+end;
+
+
+function SortHash(Item1, Item2: Pointer): Integer;
+var p1,p2:PHAHashRec;
+begin
+
+ p1:=Item1; p2:=Item2;
+ if p1^.Hash<p2^.Hash then
+  result:=-1
+ else
+  if p1^.Hash>p2^.Hash then
+   result:=1
+  else
+   result:=0;  
+end;
+
+
+
+{ THAStroredTags }
+
+
+
+
+procedure THAStoredTags.AddRecord(TagName: string; Value: OleVariant;
+  Quality:word; TimeStamp:FileTime);
+var p:PHAStoredRec;
+begin
+ new(p);
+// p^.Hash:=MakeHash(TagName);
+// p^.TypeTag:=VarType(Value);
+ p^.TagName:=TagName;
+ p^.Value:=value;
+ p^.Quality:=Quality;
+ p^.TimeStamp:=TimeStamp;
+ fAddedTagsList.Add(p);
+end;
+
+procedure THAStoredTags.CheckAddedTags;
+
+function UpdateRecord(StoredValue,Value:OleVariant):boolean;
+var STT,TT:word;
+begin
+ STT:=VarType(StoredValue);
+ TT:=VarType(Value);
+ result:= ((STT in [vt_i1,vt_ui1, vt_i2, vt_ui2, vt_i4, vt_ui4, vt_r4, vt_r8, vt_cy, vt_date,vt_bool]) and
+           (TT  in [vt_i1,vt_ui1, vt_i2, vt_ui2, vt_i4, vt_ui4, vt_r4, vt_r8, vt_cy, vt_date,vt_bool]));
+
+ if result then exit;
+ if (STT=vt_bstr) or (TT=vt_bstr) then
+  begin
+   result:=false;
+   exit;
+  end;
+
+ if ((STT and vt_array)=vt_array) and ((TT and vt_array)=vt_array) then
+  begin
+   result:= ((STT and VarTypeMask in [vt_i1,vt_ui1, vt_i2, vt_ui2, vt_i4, vt_ui4, vt_r4, vt_r8, vt_cy, vt_date,vt_bool]) and
+             (TT and VarTypeMask  in [vt_i1,vt_ui1, vt_i2, vt_ui2, vt_i4, vt_ui4, vt_r4, vt_r8, vt_cy, vt_date,vt_bool])) and
+             (VarArrayHighBound(StoredValue,1)=VarArrayHighBound(Value,1));
+
+  end;
+
+{
+ if ((StoredTypeTag and vt_array)=vt_array) and ((TypeTag and vt_array)=vt_array) then
+  begin
+
+   if ((StoredTypeTag and VarTypeMask)=vt_bstr) or ((TypeTag and VarTypeMask)=vt_bstr) then
+    begin
+     result:=false;
+   //  exit;
+    end
+   else
+    begin
+
+    end;
+
+
+  end;
+ }
+
+
+
+end;
+
+procedure AddNewRecord(TagName:string; Value:OleVariant; Quality:word; TimeStamp:TFileTime);
+var FP:Int64;
+    pH:PHAHashRec;
+begin
+  FP:=fST.Size;
+  SetRecord(FP,TagName,Value,Quality,TimeStamp);
+  new(pH);
+  pH.Hash:=MakeHash(TagName);
+  pH^.Flags:=0;
+  pH^.Position:=FP;
+  fHashList.Add(pH);
+  fHashList.Sort(@SortHash);
+end;
+
+
+var IndHashList:integer;
+    p:PHAStoredRec;
+    SR:THAStoredRec;
+    FirstPosition:Int64;
+
+begin
+ if fST=nil then exit;
+ while fAddedTagsList.Count>0 do
+  begin
+   p:=fAddedTagsList[0];
+   if GetStoredRecByTagName(p^.TagName, SR,FirstPosition,IndHashList) then
+    begin
+     // узнаем, сможем ли мы записать данный тэг в то же самое место...
+     // вдруг тип тэга изменился, или тип тэга массив или строка - тогда
+     // нужно добавлять новую запись, а старую помечать как удаленную
+
+     if UpdateRecord(SR.Value,p^.Value) then
+       SetRecord(FirstPosition,p^.TagName,p^.Value,p^.Quality,p^.TimeStamp)
+     else
+      begin
+        SetFlags(FirstPosition,ST_Deleted);
+        dispose(fHashList[IndHashList]);
+        fHashList.Delete(IndHashList);
+        AddNewRecord(p^.TagName,p^.Value,p^.Quality,p^.TimeStamp);
+      end;
+    end
+   else
+    AddNewRecord(p^.TagName,p^.Value,p^.Quality,p^.TimeStamp);
+
+   VarClear(p^.Value);
+   dispose(p);
+   fAddedTagsList.Delete(0);
+  end;
+end;
+
+procedure THAStoredTags.ClearAddedTagsList;
+var i:integer;
+begin
+ for i:=0 to fAddedTagsList.Count-1 do
+  begin
+   VarClear(THAStoredRec(fAddedTagsList[i]^).Value);
+   dispose(fAddedTagsList[i]);
+  end;
+ fAddedTagsList.Clear; 
+end;
+
+procedure THAStoredTags.ClearHashList;
+var i:integer;
+begin
+  for i:=0 to fHashList.Count-1 do
+   dispose(fHashList[i]);
+  fHashList.Clear;
+
+end;
+
+constructor THAStoredTags.Create;
+begin
+ inherited Create(false);
+ fST:=nil;
+ fHashList:=TList.Create;
+ fAddedTagsList:=TList.Create;
+
+ {if FileExists(fFileName) then
+  fST:=TFileStream.Create(fFileName,fmOpenReadWrite)
+ else
+  fST:=TFileStream.Create(fFileName,fmCreate);
+  }
+
+ // FillHashList;
+ fFillHashList:=false;
+end;
+
+destructor THAStoredTags.Destroy;
+
+begin
+
+ ClearHashList;
+ ClearAddedTagsList;
+ fHashList.Free;
+ fAddedTagsList.Free;
+ if fST<>nil then
+  fST.Free;
+  inherited;
+end;
+
+procedure THAStoredTags.Execute;
+var i:integer;
+begin
+ repeat
+  sleep(1);
+  if fFillHashList then
+   begin
+    FillHashList;
+    fFillHashList:=false;
+   end;
+
+  CheckAddedTags;
+  i:=0;
+  while (i<10) and (not Terminated) do
+   begin
+     if fFillHashList then break;
+     sleep(200);
+     inc(i);
+   end;
+
+
+ until Terminated;
+end;
+
+procedure THAStoredTags.FillHashList;
+var pHR:PHAHashRec;
+    HR:THAHashRec;
+    i:int64;
+    fl:boolean;
+begin
+ if fST=nil then exit;
+ fCurrentRecordIsFill:=1;
+ i:=Length(DescriptionStoredTags)+4;
+ fl:=false;
+ while i>=0 do
+  begin
+   HR:=GetHashRec(i);
+   inc(fCurrentRecordIsFill);
+   if i<0 then break;
+   if (HR.Flags and ST_Deleted)<>ST_Deleted then
+    begin
+     fl:=true;
+     new(pHR);
+     fillchar(pHR^,sizeof(THAHashRec),0);
+     pHR^.Hash:=HR.Hash;
+     pHR^.Flags:=HR.Flags;
+     pHR^.Position:=HR.Position;
+     fHashList.Add(pHR);
+   end;  
+  end;
+ if fl then
+  fHashList.Sort(@SortHash);
+end;
+
+function THAStoredTags.GetFlags(FirstPosition: Int64): byte;
+begin
+ fST.Position:=FirstPosition+4;
+ fST.Read(result,sizeof(result));
+end;
+
+function THAStoredTags.GetHashRec(var FirstPosition: int64): THAHashRec;
+var LenRecord:dword;
+begin
+ LenRecord:=GetLenRecord(FirstPosition);
+ if LenRecord=0 then
+  begin
+   FirstPosition:=-1;
+   exit;
+  end;
+
+ result.Hash:=GetHashTagName(FirstPosition);
+ result.Flags:=GetFlags(FirstPosition);
+ result.Position:=FirstPosition;
+ FirstPosition:=FirstPosition+LenRecord;
+end;
+
+function THAStoredTags.GetHashTagName(FirstPosition: Int64): integer;
+begin
+ fST.Position:=FirstPosition+5;
+ fST.Read(result,sizeof(result));
+end;
+
+function THAStoredTags.GetLenRecord(FirstPosition: Int64): dword;
+begin
+ result:=0;
+ if FirstPosition>=fST.Size then exit;
+ fST.Position:=FirstPosition;
+ fST.Read(result,sizeof(result));
+// fST.Position:=FirstPosition;
+end;
+
+
+function THAStoredTags.GetLenTagName(FirstPosition: Int64): dword;
+begin
+ fST.Position:=FirstPosition+9;
+ fST.Read(result,sizeof(result));
+end;
+
+function THAStoredTags.GetLenValue(FirstPosition: Int64): dword;
+var TypeTag:word;
+    LenTagName:dword;
+
+begin
+ result:=0;
+ TypeTag:=GetTypeTag(FirstPosition);
+ LenTagName:=GetLenTagName(FirstPosition);
+ fST.Position:=FirstPosition+15+LenTagName;
+ if (TypeTag and vt_array)=vt_array then
+  fST.Read(result,sizeof(result))
+ else
+  if TypeTag=vt_bstr then
+   begin
+    fST.Position:=fST.Position+4;
+    fST.Read(result,sizeof(result));
+   end;
+
+end;
+
+function THAStoredTags.GetQuality(FirstPosition: Int64): word;
+var d:dword;
+begin
+ d:=GetLenRecord(FirstPosition)-10;
+ fST.Position:=FirstPosition+d;
+ fST.Read(result,sizeof(result));
+
+end;
+
+function THAStoredTags.GetStoredRec(var FirstPosition: Int64): THAStoredRec;
+var LenRecord:dword;
+begin
+ LenRecord:=GetLenRecord(FirstPosition);
+ if LenRecord=0 then
+  begin
+   FirstPosition:=-1;
+   exit;
+  end;
+
+// result.Hash:=GetHashTagName(FirstPosition);
+ result.TagName:=GetTagName(FirstPosition);
+// result.TypeTag:=GetTypeTag(FirstPosition);
+ result.Quality:=GetQuality(FirstPosition);
+ result.Value:=GetValue(FirstPosition);
+ result.TimeStamp:=GetTimeStamp(FirstPosition);
+ FirstPosition:=FirstPosition+LenRecord;
+end;
+
+function THAStoredTags.GetStoredRecByTagName(const TagName: string;
+  var SR: THAStoredRec; out FirstPosition:Int64; out IndexHashList:integer): boolean;
+var Hash:LongInt;
+    FI,EI,i,j:integer;
+    ind,ind1:Int64;
+
+    s:string;
+begin
+ result:=false;
+ Hash:=MakeHash(TagName);
+ FI:=0; EI:=fHashList.Count-1;
+ SearchHash(Hash,FI,EI,j);
+ if j<0 then exit;
+
+ FI:=j;
+ for i:=FI downto 0 do
+  if THAHashRec(fHashList[i]^).Hash=Hash then
+   j:=i
+  else
+   break;
+
+
+ for i:=j to fHashList.Count-1 do
+  if THAHashRec(fHashList[i]^).Hash=Hash then
+    begin
+     if (THAHashRec(fHashList[i]^).Flags and ST_Deleted)<>ST_Deleted then
+      begin
+       ind:=THAHashRec(fHashList[i]^).Position;
+       s:=GetTagName(ind);
+       if CompareStr(s,TagName)=0 then
+        begin
+         IndexHashList:=i;
+         result:=true;
+         break;
+        end;
+      end;
+    end
+  else
+   Break;
+
+ if not result then exit;
+ ind1:=ind;
+ SR:=GetStoredRec(Ind);
+ result:=(Ind>=0);
+ FirstPosition:=ind1;
+end;
+
+function THAStoredTags.GetTagName(FirstPosition: Int64): string;
+var Len,i:dword;
+    c:char;
+begin
+ Len:=GetLenTagName(FirstPosition);
+ SetLength(result,Len);
+ fST.Position:=FirstPosition+13;
+ Len:=fST.Position+Len;
+ i:=1;
+ while fST.Position<Len do
+  begin
+   fST.Read(c,1);
+   result[i]:=c;
+   inc(i);
+  end;
+
+end;
+ 
+function THAStoredTags.GetTimeStamp(FirstPosition: Int64): TFileTime;
+var d:dword;
+begin
+ d:=GetLenRecord(FirstPosition)-8;
+ fST.Position:=FirstPosition+d;
+ fST.Read(result.dwLowDateTime,sizeof(result.dwLowDateTime));
+ fST.Read(result.dwHighDateTime,sizeof(result.dwHighDateTime));
+end;
+
+function THAStoredTags.GetTypeTag(FirstPosition: Int64): word;
+var Len:dword;
+begin
+ fST.Position:=FirstPosition+9;
+ fST.Read(Len,sizeof(Len));
+ fST.Position:=FirstPosition+13+Len;
+ fST.Read(result,sizeof(result));
+end;
+
+function THAStoredTags.GetValue(FirstPosition: Int64): OleVariant;
+
+function GetSimpleValue(TypeTag:word):OleVariant;
+var cr:THAConvertRec;
+    Len:dword;
+    i:integer;
+begin
+ fillchar(cr.asArrayByte,sizeof(cr.asArrayByte),0);
+ Len:=fST.Position+8;
+ i:=0;
+ while fST.Position<Len do
+  begin
+   fST.Read(cr.asArrayByte[i],1);
+   inc(i);
+  end;
+
+ case TypeTag of
+    vt_i2   : result:=VarAsType(cr.asvt_i2,TypeTag);
+    vt_i4   : result:=VarAsType(cr.asvt_i4,TypeTag);
+    vt_r4   : result:=VarAsType(cr.asvt_r4,TypeTag);
+    vt_r8   : result:=VarAsType(cr.asvt_r8,TypeTag);
+    vt_cy   : result:=VarAsType(cr.asvt_cy,TypeTag);
+    vt_date : result:=VarAsType(cr.asvt_date,TypeTag);
+    vt_bool : result:=VarAsType(cr.asvt_bool,TypeTag);
+    vt_i1   : result:=VarAsType(cr.asvt_i1,TypeTag);
+    vt_ui1  : result:=VarAsType(cr.asvt_ui1,TypeTag);
+    vt_ui2  : result:=VarAsType(cr.asvt_ui2,TypeTag);
+    vt_ui4  : result:=VarAsType(cr.asvt_ui4,TypeTag);
+  end;
+end;
+
+function GetStrValue:string;
+var Len:dword;
+    c:char;
+    i:integer;
+begin
+ fST.Read(Len,sizeof(len));
+ SetLength(result,Len);
+ Len:=fST.Position+Len;
+ i:=1;
+ while fST.Position<Len do
+  begin
+   fST.Read(c,1);
+   result[i]:=c;
+   inc(i);
+  end;
+end;
+
+
+var TypeTag:word;
+    LenTagName,LenArray:dword;
+    i:integer;
+begin
+ result:=VarEmpty;
+ TypeTag:=GetTypeTag(FirstPosition);
+ LenTagName:=GetLenTagName(FirstPosition);
+ fST.Position:=FirstPosition+15+LenTagName;
+ fST.Read(LenArray,sizeof(LenArray));
+
+ if (TypeTag and vt_array)=vt_array then
+  begin
+   result:=VarArrayCreate([0,LenArray-1], TypeTag and VarTypeMask);
+
+   for i:=0 to LenArray-1 do
+    if (TypeTag and VarTypeMask)=vt_bstr then
+      result[i]:=GetStrValue
+    else
+      result[i]:=GetSimpleValue(TypeTag and VarTypeMask);
+  end
+ else
+  if TypeTag=vt_bstr then
+   begin
+    result:=GetStrValue;
+   end
+  else
+   begin
+     result:=GetSimpleValue(TypeTag);
+   end;  
+end;
+
+procedure THAStoredTags.SearchHash(Hash: Integer; var FI, EI: integer; var Ind:integer);
+var i:integer;
+begin
+ Ind:=-1;
+
+ if EI-FI<3 then
+  begin
+   for i:=FI to EI do
+    if THAHashRec(fHashList[i]^).Hash=Hash then
+     begin
+      Ind:=i;
+      break;
+     end;
+  end
+ else
+  begin
+   i:=FI+((EI-FI) div 2);
+   if THAHashRec(fHashList[i]^).Hash<Hash then
+    SearchHash(Hash,i,EI,Ind)
+   else
+    if THAHashRec(fHashList[i]^).Hash>Hash then
+     SearchHash(Hash,FI,i,Ind)
+    else
+     Ind:=i;
+  end;
+
+{ if Ind<0 then exit;
+ j:=Ind;
+ for i:=j downto 0 do
+  if THAHashRec(fHashList[i]^).Hash=Hash then
+   Ind:=i
+  else
+   break;   }
+end;
+
+procedure THAStoredTags.SetFlags(FirstPosition: Int64; const Flags:byte);
+begin
+ fST.Position:=FirstPosition+4;
+ fST.Write(Flags,sizeof(Flags));
+end;
+
+function THAStoredTags.SetRecord(FirstPosition: Int64;
+  TagName: string; Value: OleVariant;
+  Quality: word; TimeStamp: TFileTime):Int64;
+
+
+procedure SetSimpleValue(TypeTag:word; V:OleVariant);
+var cr:THAConvertRec;
+begin
+ fillchar(cr.asArrayByte,sizeof(cr.asArrayByte),0);
+ case TypeTag of
+  vt_i2   : cr.asvt_i2:=V;
+  vt_i4   : cr.asvt_i4:=V;
+  vt_r4   : cr.asvt_r4:=V;
+  vt_r8   : cr.asvt_r8:=V;
+  vt_cy   : cr.asvt_cy:=V;
+  vt_date : cr.asvt_date:=V;
+  vt_bool : cr.asvt_bool:=V;
+  vt_i1   : cr.asvt_i1:=V;
+  vt_ui1  : cr.asvt_ui1:=V;
+  vt_ui2  : cr.asvt_ui2:=V;
+  vt_ui4  : cr.asvt_ui4:=V;
+ end;
+ fST.Write(cr.asArrayByte,8);
+end;
+
+procedure SetStrValue(V:OleVariant);
+var Len:dword;
+    s:string;
+    i:integer;
+begin
+ s:=VarToStr(v);
+ Len:=Length(s);
+ fST.Write(Len,sizeof(Len));
+ for i:=1 to Len do
+  fST.Write(s[i],1);
+end;
+
+
+
+
+var LenRecord,LenTagName,LenArray:dword;
+    TypeTag:word;
+    HashTagName:LongInt;
+    Flags: byte;
+    i:integer;
+begin
+ fST.Position:=FirstPosition;
+ LenRecord:=FirstPosition;
+ Flags:=0;
+
+ fST.Write(LenRecord,sizeof(LenRecord));
+ fST.Write(Flags,sizeof(Flags));
+
+ HashTagName:=MakeHash(TagName);
+ fST.Write(HashTagName,sizeof(HashTagName));
+
+ LenTagName:=Length(TagName);
+ fST.Write(LenTagName,sizeof(LenTagName));
+
+ for i:=1 to LenTagName do
+  fST.Write(TagName[i],1);
+
+ TypeTag:=VarType(Value);
+ fST.Write(TypeTag,sizeof(TypeTag));
+
+ if (TypeTag and vt_array)=vt_array then
+  LenArray:=VarArrayHighBound(Value,1)+1
+ else
+  LenArray:=0;
+
+ fST.Write(LenArray,sizeof(LenArray));
+
+ if (TypeTag and vt_array)=vt_array then
+  begin
+   for i:=0 to LenArray-1 do
+    if (TypeTag and VarTypeMask)=vt_bstr then
+     SetStrValue(Value[i])
+    else
+     SetSimpleValue((TypeTag and VarTypeMask),Value[i]);
+  end
+ else
+  if TypeTag=vt_bstr then
+   begin
+    SetStrValue(Value);
+   end
+  else
+   SetSimpleValue(TypeTag,Value);
+
+ fST.Write(Quality,sizeof(Quality));
+ fST.Write(TimeStamp.dwLowDateTime,sizeof(TimeStamp.dwLowDateTime));
+ fST.Write(TimeStamp.dwHighDateTime,sizeof(TimeStamp.dwHighDateTime));
+
+ result:=fST.Position;
+ LenRecord:=fST.Position-FirstPosition;
+ fST.Position:=FirstPosition;
+ fST.Write(LenRecord,sizeof(LenRecord));
+
+end;
+
+function THAStoredTags.SetStoredFile(FileName: string): HResult;
+var s:string;
+    c:char;
+    i:integer;
+    v:word;
+    minLen:integer;
+begin
+ fErrorString:='';
+ result:=s_ok;
+
+ CheckAddedTags;
+ ClearHashList;
+ ClearAddedTagsList;
+ if fST<>nil then
+  fST.Free;
+ minLen:=Length(DescriptionStoredTags)+4;
+ fFileName:=FileName;
+ if fFileName='' then exit;
+ try
+  if FileExists(fFileName) then
+   begin
+
+     fST:=TFileStream.Create(fFileName,fmOpenReadWrite);
+     if fST.Size<minLen then
+      begin
+       fErrorString:='Неверный формат файла '+fFileName;
+       result:=s_false;
+       fST.Free;
+       fST:=nil;
+       exit;
+      end;
+
+     fST.Position:=0;
+     s:='';
+     for i:=1 to (minLen-4) do
+      begin
+       fST.Read(c,1);
+       s:=s+c;
+      end;
+
+     if CompareText(DescriptionStoredTags,s)<>0 then
+      begin
+       fErrorString:='Неверный формат файла '+fFileName;
+       result:=s_false;
+       fST.Free;
+       fST:=nil;
+       exit;
+      end;
+     fST.Position:=fST.Position+4;
+
+     {fST.Read(v,sizeof(word));
+
+     if v<>VersionSTV then
+      begin
+       fErrorString:='Неверная версия файла '+fFileName;
+       result:=s_false;
+       fST.Free;
+       fST:=nil;
+       exit;
+      end;
+      }
+
+   end
+  else
+   begin
+    fST:=TFileStream.Create(fFileName,fmCreate);
+    fST.Position:=0;
+    s:=DescriptionStoredTags;
+
+    for i:=1 to minlen-4 do
+      fST.Write(s[i],1);
+
+
+    v:=VersionSTV;
+    fST.Write(v,sizeof(word));
+    fST.Write(v,sizeof(word));
+   end;
+
+ fFillHashList:=true;
+
+ except
+  on E:Exception do
+   begin
+    fErrorString:=E.Message;
+    result:=s_false;
+    fST:=nil;
+   end;
+ end;
+
+end;
+
+procedure THAStoredTags.TerminateAndFree;
+begin
+ Terminate;
+ WaitFor;
+ CheckAddedTags;
+ Free;
+end;
+
+end.

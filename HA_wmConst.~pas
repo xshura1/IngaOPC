@@ -1,0 +1,39 @@
+unit HA_wmConst;
+
+interface
+ uses messages;
+ const
+  wm_OPCManChangedTag=wm_user+10;
+  wm_StateOPCMan=wm_user+11;
+
+
+  //WParam Info
+   som_NoInit=0;
+   som_IsReseting=1;
+   som_IsRunning=2;
+   som_RWDevice=3;
+   som_IsStopped=4;
+   som_IsClosed=5;
+
+  wm_ChangeHALog=wm_user+12;
+  wm_ChangeTrayIcon=wm_user+13;
+
+ { wm_DebugOPCMan=wm_user+14;
+   //WParam Info
+    dom_InitScript=1;
+    dom_ActiveLine=2;
+    dom_BreakPointLine=3;
+  }
+  
+  wm_DebugDriver    = wm_user+15;
+
+  wm_PSLineInfo     = wm_user+16;
+  wm_PSBreakPoint   = wm_user+17;
+  wm_PSIdle         = wm_user+18;
+  UI_INITIALIZE     = wm_user + 20;
+  wm_PSExecError    = wm_user +21;
+  wm_DynList        = wm_user+50; 
+
+implementation
+
+end.

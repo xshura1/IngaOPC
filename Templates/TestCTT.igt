@@ -1,0 +1,77 @@
+<Header FileDescription="IngaOPC Template File" Version="0101" Checked="-1" Script="
+{ TConvertRec=record
+   case byte of
+    0:  (asArrayByte:array [0..7] of byte);
+    1 : (asvt_i2   : smallint );
+    2 : (asvt_i4   : integer  );
+    3 : (asvt_r4   : single   );
+    4 : (asvt_r8   : double   );
+    5 : (asvt_cy   : currency );
+    6 : (asvt_date : TDateTime);
+    7 : (asvt_bool : bool     );
+    8 : (asvt_i1   : Shortint );
+    9 : (asvt_ui1  : byte     );
+    10: (asvt_ui2  : Word     );
+    11: (asvt_ui4  : longword );
+  end;
+ }
+procedure OnWrite(Device:TIGDevice; Tags:TIGTags);
+var i:smallint;
+    W:VARIANT;
+begin
+ i:=[&quot;Tag2&quot;].VQT.Value;
+ 
+ w:=[&quot;Tag2&quot;].VQT.Value;
+ 
+ IGConverter.SetValue(w);
+ [&quot;CommandWrite&quot;].count:=2;
+ 
+ [&quot;CommandWrite&quot;][0]:=IGConverter.bytes[0];
+ [&quot;CommandWrite&quot;][1]:=IGConverter.bytes[1];
+ 
+ {[&quot;CommandWrite&quot;][0]:=Byte(i);
+ [&quot;CommandWrite&quot;][1]:=Byte(i shr 8);}
+ [&quot;CommandWrite&quot;].run;
+ 
+
+end;
+
+
+
+procedure &lt;Tag2/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+var dt:word;
+begin
+ dt:=[&quot;Tag&quot;].DataType;
+                   
+//   [&quot;CommandRead&quot;][8]:=3;
+   [&quot;CommandRead&quot;].count:=1;
+   [&quot;CommandRead&quot;].run;
+end;   
+             
+procedure &lt;Command2/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var w:variant;
+begin
+ w:=[&quot;Tag2&quot;].newvalue;
+ IGConverter.SetValue(w);
+ IGConverter.Bytes[0]:=DriverData[0];
+ IGConverter.Bytes[1]:=DriverData[1];
+ [&quot;Tag2&quot;].newvalue:=w;
+ //[&quot;Tag2&quot;].newvalue:=smallint(makeword(DriverData[0],DriverData[1]));
+
+end;
+
+procedure &lt;CommandRead/&gt;OnBeforeWrite(Device:TIGDevice; Command:TIGCommand; var Cancel:boolean);
+begin
+ Cancel:=false;
+ //[&quot;CommandRead&quot;][1000]:=23;
+ //[&quot;CommandWrite&quot;].run;
+end;
+
+begin
+
+end."><T10 OID="1" Description="liytiyi
+asdfasdf
+qwetqregwg" Name="Template" Desctiption="" DateCreate="04.05.2006 14:09:54" DateLastUpdate="19.04.2007 16:25:41" CompileID="139"><T20 OID="2" Description="" Name="Tags" Desctiption=""><T120 OID="6" Description="asdfljhl
+qwe;rlqjerqw
+qwerqo34i5r1q432
+qasdfadsf" Name="Tag" Desctiption="" DataType="11" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"><T145 OID="16" Description="" OIDLink="15" Desctiption="" Value="03003800000069241102"/><T145 OID="47" Description="" OIDLink="45" Desctiption="" Value="03000200000002000000"/><T145 OID="48" Description="" OIDLink="46" Desctiption="" Value="08200300000009000000CEF2EAEBFEF7E5EDEE06000000CDEEF7EDEEE908000000C2E5F7E5F0EDE8E9"/></T120><T120 OID="7" Description="" Name="Tag1" Desctiption="" DataType="16" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="8" Description="" Name="Tag2" Desctiption="" DataType="18" Readable="True" Writeable="True" OnRead="&lt;Tag2/&gt;OnRead" OnWrite="OnWrite" Saved="True"/><T120 OID="9" Description="" Name="Tag3" Desctiption="aertqwert" DataType="18" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="10" Description="" Name="Tag4" Desctiption="" DataType="3" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"><T145 OID="49" Description="" OIDLink="15" Desctiption="" Value="03002200000002000000"/><T145 OID="50" Description="" OIDLink="46" Desctiption="" Value="08200300000003000000617364030000007177720100000068"/></T120><T120 OID="11" Description="" Name="Tag5" Desctiption="" DataType="19" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="12" Description="" Name="Tag6" Desctiption="" DataType="4" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="13" Description="" Name="Tag7" Desctiption="" DataType="5" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="14" Description="" Name="Tag8" Desctiption="" DataType="6" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="17" Description="" Name="Tag9" Desctiption="" DataType="8208" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="18" Description="" Name="Tag10" Desctiption="" DataType="8209" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="19" Description="" Name="Tag11" Desctiption="" DataType="8194" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="20" Description="" Name="Tag12" Desctiption="" DataType="8210" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="21" Description="" Name="Tag13" Desctiption="" DataType="8195" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="22" Description="" Name="Tag14" Desctiption="" DataType="8211" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="23" Description="" Name="Tag15" Desctiption="" DataType="8196" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="24" Description="" Name="Tag16" Desctiption="" DataType="8197" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="25" Description="" Name="Tag17" Desctiption="" DataType="8198" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="26" Description="" Name="Tag18" Desctiption="" DataType="8199" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="27" Description="" Name="Tag19" Desctiption="" DataType="8200" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="28" Description="" Name="Tag20" Desctiption="" DataType="8203" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="31" Description="" Name="Tag21" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="32" Description="" Name="Tag22" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="33" Description="" Name="Tag23" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="34" Description="" Name="Tag24" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="35" Description="" Name="Tag25" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="36" Description="" Name="Tag26" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="37" Description="" Name="Tag27" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="38" Description="" Name="Tag28" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="39" Description="" Name="Tag29" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="40" Description="" Name="Tag30" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="41" Description="" Name="Tag31" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="42" Description="" Name="Tag32" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="43" Description="" Name="Tag33" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="44" Description="" Name="Tag34" Desctiption="" DataType="17" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T50 OID="51" Description="" Name="Folder"><T50 OID="52" Description="" Name="Folder"/></T50></T20><T25 OID="3" Description="" Name="Properties" Desctiption=""><T125 OID="15" Description="" Name="Prop" Desctiption="" DataType="17" PropID="5000" UniqueValue="True"/><T125 OID="45" Description="" Name="EUType" Desctiption="" DataType="3" PropID="7"/><T125 OID="46" Description="" Name="EUInfo" Desctiption="" DataType="8200" PropID="8"/></T25><T30 OID="4" Description="" Name="Commands" Desctiption=""><T130 OID="30" Description="" Name="CommandRead" Desctiption="" NoCommand="2" CountWriteBytes="0" CountReadBytes="0" OnBeforeWrite="&lt;CommandRead/&gt;OnBeforeWrite" OnAfterRead="&lt;Command2/&gt;OnAfterRead"/><T130 OID="29" Description="" Name="CommandWrite" Desctiption="" NoCommand="1" CountWriteBytes="0" CountReadBytes="0" OnBeforeWrite="" OnAfterRead=""/></T30></T10></Header>

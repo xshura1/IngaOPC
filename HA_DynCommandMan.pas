@@ -1,0 +1,267 @@
+unit HA_DynCommandMan;
+
+interface
+  uses ha_types,windows,Classes,SysUtils,ha_classes,ha_dllManager;
+ type
+
+  THADynCommandMan=class(TObject)
+   private
+    fHashList:TList;
+    fDllMan:THADriverMan2;
+    fCountRequest:dword;
+    fCountAnswer:dword;
+    function SearchIndexList(Hash:cardinal):integer;
+    function GetCountHash: integer;
+    function GetHashCommand(index:integer): THAPSCommand;
+    function GetPercent: byte;
+   public
+    constructor Create(DLLMan:THADriverMan2);
+    destructor Destroy; override;
+
+    procedure AddCommand(Command: THAPSCommand);
+    procedure CheckDeletedCommand; // проверяет команды на наличие флага "удалена"
+    procedure ClearAllCommands;
+    procedure ClearCommandsForOldNoConfig(NewNoConfig:dword);
+    procedure ClearCommandsForIDTrans(IDTrans:dword);
+    property HashCommands[index:integer]:THAPSCommand read GetHashCommand;
+    property CountHash:integer read GetCountHash;
+    procedure Refresh;
+    property PercentLoadingDrivers:byte read GetPercent;
+  end;
+implementation
+
+ type
+  PHashRec=^THashRec;
+  THashRec=record
+   Hash:cardinal;
+   List:TThreadList;
+  end;
+
+
+{ THADynCommandMan }
+
+procedure THADynCommandMan.AddCommand(Command: THAPSCommand);
+var ind,i,j,ic:integer;
+    p:PHashRec;
+    PSCommand:THAPSCommand;
+begin
+ p:=nil;
+ ind:=SearchIndexList(Command.Controller.HashDrv);
+ if ind<0 then exit;
+ p:=fHashList[ind];
+
+ j:=-1;
+ with p^.List.LockList do
+   try
+      for i:=0 to Count-1 do
+        begin
+         ic:=Count;
+         PSCommand:=THAPSCommand(Items[i]);
+         if Command.Priority>PSCommand.Priority then continue;
+         if (Command.Priority<PSCommand.Priority) then
+          begin
+           j:=i;
+           break;
+          end;
+        end;
+      Command.State:=cs_BeforeWriting;
+      Command.LoadTime:=GetTickCount;
+      Command.InUse:=true;
+      if j>=0 then
+       Insert(j,Command)
+      else
+       Add(Command);
+
+   finally
+    p^.List.UnlockList;
+   end;
+end;
+
+
+procedure THADynCommandMan.CheckDeletedCommand;
+var i,j:integer;
+    p:PHashRec;
+begin
+ for i:=0 to fHashList.Count-1 do
+  begin
+   p:=fHashList[i];
+   with p^.List.LockList do
+    try
+      for j:=Count-1 downto 0 do
+        if THAPSCommand(items[j]).Deleted then
+         begin
+           THAPSCommand(items[j]).InUse:=false;
+           Delete(j);
+         end;
+    finally
+     p^.List.UnlockList;
+    end;
+  end;
+end;
+
+procedure THADynCommandMan.ClearAllCommands;
+var i,j:integer;
+    p:PHashRec;
+begin
+ for i:=0 to fHashList.Count-1 do
+  begin
+   p:=fHashList[i];
+   with p^.List.LockList do
+    try
+      for j:=Count-1 downto 0 do
+       THAPSCommand(items[j]).InUse:=false;
+
+    finally
+     p^.List.UnlockList;
+    end;
+   p^.List.Free;
+   dispose(p);
+  end;
+ fHashList.Clear;
+end;
+
+
+
+procedure THADynCommandMan.ClearCommandsForIDTrans(IDTrans: dword);
+begin
+
+end;
+
+procedure THADynCommandMan.ClearCommandsForOldNoConfig(NewNoConfig: dword);
+var i,j:integer;
+    p:PHashRec;
+begin
+ for i:=0 to fHashList.Count-1 do
+  begin
+   p:=fHashList[i];
+   with p^.List.LockList do
+    try
+      for j:=Count-1 downto 0 do
+       if THAPSCommand(items[j]).CurrentNoConfig<>NewNoConfig then
+        begin
+         THAPSCommand(items[j]).InUse:=false;
+         Delete(j);
+        end;
+    finally
+     p^.List.UnlockList;
+    end;
+
+  end;
+
+end;
+
+constructor THADynCommandMan.Create(DLLMan:THADriverMan2);
+begin
+ inherited Create;
+ fDLLMan:=DLLMan;
+ fHashList:=TList.Create;
+ Refresh;
+end;
+
+destructor THADynCommandMan.Destroy;
+begin
+  ClearAllCommands;
+  fHashList.Free;
+  inherited;
+end;
+
+function THADynCommandMan.GetCountHash: integer;
+begin
+ result:=fHashList.Count;
+end;
+
+function THADynCommandMan.GetHashCommand(index:integer): THAPSCommand;
+var p:PHashRec;
+    
+begin
+ result:=nil;
+ if (index<0) or (index>=fHashList.Count) then exit;
+ p:=fHashList[index];
+ inc(fCountRequest);
+ with p^.List.LockList do
+  try
+   while result=nil do { and (Count>0) do}
+    begin
+     sleep(1);
+
+     if count=0 then break;
+     if THAPSCommand(Items[0]).Deleted then
+      begin
+       THAPSCommand(Items[0]).InUse:=false;
+       Delete(0);
+      end
+     else
+      begin
+
+       if not fDLLMan.IsWork(p^.Hash) then
+        begin
+         result:=THAPSCommand(Items[0]);
+         inc(fCountAnswer);
+         Delete(0);
+        end
+       else
+        break; 
+      end;
+      //else
+      // inc(fCountRequest);
+    end;
+  finally
+   p^.List.UnlockList;
+  end;
+end;
+
+function THADynCommandMan.GetPercent: byte;
+begin
+ if fCountRequest<>0 then
+  result:=round((fCountAnswer*100)/fCountRequest)
+ else
+  result:=0; 
+end;
+
+procedure THADynCommandMan.Refresh;
+var i,j:integer;
+    p:PHashRec;
+begin
+ fCountRequest:=0;
+ fCountAnswer:=0;
+ for i:=0 to fHashList.Count-1 do
+  begin
+   p:=fHashList[i];
+   with p^.List.LockList do
+    try
+      for j:=Count-1 downto 0 do
+       THAPSCommand(items[j]).InUse:=false;
+
+    finally
+     p^.List.UnlockList;
+    end;
+   p^.List.Free;
+   dispose(p);
+  end;
+ fHashList.Clear;
+
+
+ if fDLLMan=nil then exit;
+ for i:=0 to fDLLMan.CountHash-1 do
+  begin
+   new(p);
+   p^.Hash:=fDLLMan.HashID[i];
+   p^.List:=TThreadList.Create;
+   fHashList.Add(p);
+  end;
+
+end;
+
+function THADynCommandMan.SearchIndexList(Hash: cardinal): integer;
+var i:integer;
+begin
+ result:=-1;
+ for i:=0 to fHashList.Count-1 do
+  if THashRec(fHashList[i]^).Hash=Hash then
+   begin
+    result:=i;
+    break;
+   end;
+end;
+
+end.

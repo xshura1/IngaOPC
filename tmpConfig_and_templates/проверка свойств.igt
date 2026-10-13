@@ -1,0 +1,13 @@
+<Header FileDescription="IngaOPC Template File" Version="0101" Script="procedure &lt;Tag/&gt;OnRead(Device:TIGDevice; Tags:TIGTags);
+var s:string;
+begin
+  s:=[&quot;Tag&quot;].Prop[5000].ValueAsArray[0];
+  if s&lt;&gt;'' then
+   [&quot;Tag&quot;].NewValue:=35;
+
+
+end;
+
+begin
+
+end."><T10 OID="1" Name="Template" DateCreate="20.11.2006 14:14:26" DateLastUpdate="23.11.2006 9:33:05" CompileID="10"><T20 OID="2" Name="Tags"><T120 OID="6" Name="Tag" DataType="17" Readable="True" Writeable="True" OnRead="&lt;Tag/&gt;OnRead" OnWrite=""><T145 OID="8" OIDLink="7" Value="082003000000030000006161610300000062626203000000636363"/><T145 OID="10" OIDLink="9" Value="03000000000002000000"/></T120></T20><T25 OID="3" Name="Properties"><T125 OID="7" Name="Prop" DataType="8200" PropID="5000"/><T125 OID="9" Name="Prop1" DataType="7" PropID="5001"/></T25><T30 OID="4" Name="Commands"/><T35 OID="5" Name="Events"/></T10></Header>

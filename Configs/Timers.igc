@@ -1,0 +1,1 @@
+<Header FileDescription="IngaOPC Config File" Version="0101" Checked="-1"><T140 OID="1" Name="Device" TemplateName="Timers" DriverName="CTTDriver.dll" Address="1" Param="0"/></Header>

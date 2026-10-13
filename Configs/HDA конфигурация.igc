@@ -1,0 +1,1 @@
+<Header FileDescription="IngaOPC Config File" Version="0101" Checked="-1"><T50 OID="1" Name="Folder"><T50 OID="2" Name="Folder"><T140 OID="3" Name="Device" TemplateName="HDA шаблон" DriverName="CTTDriver.dll" Address="2" Param="0"/></T50></T50></Header>

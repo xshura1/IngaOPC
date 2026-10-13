@@ -1,0 +1,200 @@
+unit HA_templateopendialog;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, ExtCtrls, ImgList, VirtualTrees,ha_explorer,ha_xmldata,HA_OPCMan;
+
+type
+  TfmTemplateOpenDialog = class(TForm)
+    Panel1: TPanel;
+    Panel2: TPanel;
+    BtnCancel: TButton;
+    BtnOK: TButton;
+    Panel3: TPanel;
+    LB: TListBox;
+    Panel4: TPanel;
+    Edit1: TEdit;
+    BtnDel: TButton;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure Panel4Resize(Sender: TObject);
+    procedure Edit1Change(Sender: TObject);
+    procedure LBClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure LBDblClick(Sender: TObject);
+    procedure BtnDelClick(Sender: TObject);
+    procedure LBKeyPress(Sender: TObject; var Key: Char);
+  private
+    { Private declarations }
+    fExplorerMode:TExplorerMode;
+    fDocName:string;
+    procedure CheckDel;
+  public
+    { Public declarations }
+  end;
+
+ function OpenTemplate(ExplorerMode:TExplorerMode; var DocName:string):boolean;
+ function SaveTemplate(ExplorerMode:TExplorerMode; var DocName:string):boolean;
+
+implementation
+
+{$R *.dfm}
+
+function OpenTemplate(ExplorerMode:TExplorerMode; var DocName:string):boolean;
+begin
+ result:=false;
+ with TfmTemplateOpenDialog.Create(application) do
+  begin
+
+   Panel4.Visible:=false;
+   fExplorerMode:=ExplorerMode;
+   case ExplorerMode of
+    Em_Templates  :begin
+                    Caption:='Открыть шаблон';
+                    XData.GetAllTemplates(lb.Items);
+                   end;
+    em_Controllers:begin
+                    Caption:='Открыть конфигурацию';
+                    XData.GetAllConfigs(lb.Items);
+                   end;
+   end;
+   BtnOk.Caption:='Открыть';
+   fDocName:=DocName;
+   CheckDel;
+   if Showmodal=mrOk then
+    begin
+     DocName:=lb.Items[lb.itemindex];
+     result:=true;
+    end;
+  end;
+end;
+
+
+function SaveTemplate(ExplorerMode:TExplorerMode; var DocName:string):boolean;
+begin
+ result:=false;
+ with TfmTemplateOpenDialog.Create(application) do
+  begin
+   Caption:='Сохранить как';
+   Panel4.Visible:=true;
+   Edit1.Width:=Panel4.Width;
+   BtnOk.Caption:='Сохранить';
+   fExplorerMode:=ExplorerMode;
+   fDocName:=DocName;
+   CheckDel;
+   case ExplorerMode of
+    Em_Templates  :begin
+                    Caption:='Сохранить шаблон';
+                    XData.GetAllTemplates(lb.Items);
+                   end;
+    em_Controllers:begin
+                    Caption:='Сохранить конфигурацию';
+                    XData.GetAllConfigs(lb.Items);
+                   end;
+   end;
+
+   if Showmodal=mrOk then
+    begin
+     DocName:=Edit1.Text;
+     result:=true;
+    end;
+  end;
+
+end;
+
+
+procedure TfmTemplateOpenDialog.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+ Action:=caFree;
+end;
+
+procedure TfmTemplateOpenDialog.Panel4Resize(Sender: TObject);
+begin
+ Edit1.Width:=Panel4.Width;
+end;
+
+procedure TfmTemplateOpenDialog.Edit1Change(Sender: TObject);
+var i:integer;
+begin
+ lb.ItemIndex:=-1;
+ i:=lb.Items.IndexOf(Edit1.Text);
+ if i>=0 then
+  lb.ItemIndex:=i;
+ btnOk.Enabled:=true; 
+end;
+
+procedure TfmTemplateOpenDialog.LBClick(Sender: TObject);
+var i:integer;
+begin
+ CheckDel;
+ i:=lb.ItemIndex;
+ if i>=0 then
+  Edit1.Text:=lb.Items[i];
+end;
+
+procedure TfmTemplateOpenDialog.FormShow(Sender: TObject);
+begin
+ if panel4.Visible then
+  Edit1.SetFocus;
+end;
+
+procedure TfmTemplateOpenDialog.LBDblClick(Sender: TObject);
+begin
+ if lb.ItemIndex>=0 then
+  ModalResult:=mrOk;
+end;
+
+procedure TfmTemplateOpenDialog.BtnDelClick(Sender: TObject);
+var s,sf:string;
+begin
+ if lb.ItemIndex<0 then exit;
+ sf:=lb.Items[lb.ItemIndex];
+ case fExplorerMode of
+    Em_Templates  :s:='Удалить шаблон '+sf+' ?';
+    em_Controllers:s:='Удалить конфигурацию '+sf+' ?';
+   end;
+ if MessageBox(handle,PChar(s),PChar(Application.Title) ,MB_YESNO or MB_ICONQUESTION or MB_APPLMODAL)=IDNO then exit;
+ case fExplorerMode of
+    Em_Templates  :begin
+                    XData.DeleteTemplate(sf);
+                    XData.GetAllTemplates(lb.Items);
+                   end;
+    em_Controllers:begin
+                    XData.DeleteConfig(sf);
+                    XData.GetAllConfigs(lb.Items);
+                   end;
+ end;
+ CheckDel;
+
+end;
+
+procedure TfmTemplateOpenDialog.CheckDel;
+var i:integer;
+    s:string;
+begin
+ BtnOK.Enabled:=(lb.ItemIndex>-1);
+
+ BtnDel.Enabled:=(lb.ItemIndex>-1) and (CompareText(fDocName,lb.Items[lb.ItemIndex])<>0);
+
+ if not BtnDel.Enabled then exit;
+ s:=lb.Items[lb.ItemIndex];
+ case fExplorerMode of
+  Em_Templates:for i:=0 to OPCMan.CountTemplates-1 do
+                 if CompareText(s,OPCMan.Templates[i].NameObj)=0 then
+                  begin
+                   BtnDel.Enabled:=false;
+                   break;
+                  end;
+  Em_Controllers:BtnDel.Enabled:=CompareText(s,OPCMan.CurrentConfig)<>0;                
+
+ end;
+end;
+
+procedure TfmTemplateOpenDialog.LBKeyPress(Sender: TObject; var Key: Char);
+begin
+ CheckDel;
+end;
+
+end.

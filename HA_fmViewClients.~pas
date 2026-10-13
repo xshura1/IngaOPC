@@ -1,0 +1,428 @@
+unit HA_fmViewClients;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs,  VirtualTrees, ExtCtrls, HA_CustomFM2,HADAIMP,HA_DAGROUP,HA_Classes,
+  OPCDA,IniFiles, StdCtrls;
+
+type
+  TfmViewClients = class(TForm)
+    Panel1: TPanel;
+    TV: TVirtualStringTree;
+    Timer1: TTimer;
+    procedure FormCreate(Sender: TObject);
+    procedure TVGetText(Sender: TBaseVirtualTree; Node: PVirtualNode;
+      Column: TColumnIndex; TextType: TVSTTextType;
+      var CellText: WideString);
+    procedure Timer1Timer(Sender: TObject);
+    procedure TVExpanded(Sender: TBaseVirtualTree; Node: PVirtualNode);
+    procedure TVCollapsed(Sender: TBaseVirtualTree; Node: PVirtualNode);
+    procedure TVPaintText(Sender: TBaseVirtualTree;
+      const TargetCanvas: TCanvas; Node: PVirtualNode;
+      Column: TColumnIndex; TextType: TVSTTextType);
+    procedure TVFocusChanged(Sender: TBaseVirtualTree; Node: PVirtualNode;
+      Column: TColumnIndex);
+    procedure FormDestroy(Sender: TObject);
+  private
+    { Private declarations }
+    procedure RefreshClients;
+    procedure CheckServerClient(DA:THADAOBJ);
+    procedure CheckGroupClient(GR:THADAGroup; NodeServer:PVirtualNode);
+    procedure CheckItemClient(Item:THAOPCItem; NodeGroup:PVirtualNode);
+
+    procedure SaveIniParams; 
+    procedure LoadIniParams;
+
+  public
+    { Public declarations }
+
+  end;
+
+
+
+implementation
+  uses HA_OPCMan,ha_utils;
+{$R *.dfm}
+
+ type
+  TTypeNode=(tn_Server,tn_Group,tn_Item);
+  PTVClientItem=^TTVClientItem;
+  TTVClientItem=record
+   TypeNode:TTypeNode;
+   Handle:dword;
+   Caption:WideString;
+   Props:WideString;
+   Deleted:boolean;
+   Expanded:boolean;
+  end;
+
+
+{ TfmViewClients }
+
+procedure TfmViewClients.RefreshClients;
+var i:integer;
+    n:PVirtualNode;
+    p:PTVClientItem;
+begin
+ try
+ n:=TV.GetFirst;
+ while n<>nil do
+  begin
+   p:=TV.GetNodeData(n);
+   if p<>nil then
+    p^.Deleted:=true;
+   n:=TV.GetNext(n);
+  end;
+
+
+
+ for i:=0 to OPCMan.CountServers-1 do
+  CheckServerClient(THADAOBJ(OPCMan.HAServer[i]));
+
+
+
+ n:=TV.GetFirst;
+ while n<>nil do
+  begin
+   p:=TV.GetNodeData(n);
+   if p<>nil then
+    if p^.Deleted then
+     TV.DeleteNode(n,false);
+   n:=TV.GetNext(n);
+  end;
+ except
+ // on e:exception do
+ //  showmessage(e.Message);
+ end;  
+end;
+
+procedure TfmViewClients.FormCreate(Sender: TObject);
+begin
+  inherited;
+ TV.NodeDataSize:=sizeof(TTVClientItem);
+ LoadIniParams;
+ RefreshClients;
+end;
+
+procedure TfmViewClients.TVGetText(Sender: TBaseVirtualTree;
+  Node: PVirtualNode; Column: TColumnIndex; TextType: TVSTTextType;
+  var CellText: WideString);
+var p:PTVClientItem;
+begin
+ p:=Sender.GetNodeData(Node);
+ if p=nil then exit;
+ case Column of
+  0:CellText:=p^.Caption;
+  1:CellText:=p^.Props;
+ end;
+
+end;
+
+procedure TfmViewClients.Timer1Timer(Sender: TObject);
+begin
+  inherited;
+  Timer1.Enabled:=false;
+  try
+   RefreshClients;
+   
+  finally
+   Timer1.Enabled:=true;
+  end;
+end;
+
+procedure TfmViewClients.CheckGroupClient(GR:THADAGroup; NodeServer: PVirtualNode);
+
+function GetInfo(CountItem:integer):string;
+ const
+  fmt='%d  %s  %d';
+ var
+  s:string;
+begin
+  if GR.GroupIsActive then
+   s:='ДА'
+  else
+   s:='НЕТ';
+
+  result:=format(fmt,[CountItem,s, GR.UpdateRate]);
+end;
+
+
+var i,j:integer;
+    n,nGroup:PVirtualNode;
+    p:PTVClientItem;
+begin
+ nGroup:=nil;
+ n:=TV.GetFirstChild(NodeServer);
+ while n<>nil do
+  begin
+   p:=TV.GetNodeData(n);
+   if p<>nil then
+    if (p^.TypeNode=tn_Group) and (p^.Handle=GR.hServerGroup) then
+     begin
+       nGroup:=n;
+       break;
+     end;
+   n:=TV.GetNextSibling(n);
+  end;
+
+ if nGroup=nil then
+  begin
+   nGroup:=TV.AddChild(NodeServer);
+   p:=TV.GetNodeData(nGroup);
+   p^.TypeNode:=tn_Group;
+   p^.Handle:=GR.hServerGroup;
+ //  p^.Caption:=GR.NameGroup;
+   p^.Deleted:=false;
+   p^.Expanded:=false;
+  end
+ else
+  if p<>nil then
+   p^.Deleted:=false;
+
+ j:=0;
+ for i:=0 to GR.CountOPCItems-1 do
+  if GR.OPCItems[i]<>nil then
+   begin
+    CheckItemClient(GR.OPCItems[i],nGroup);
+    inc(j);
+   end;
+
+ if p<>nil then
+   begin
+    if Gr.NameGroup='' then
+     p^.Caption:='Имя не задано'
+    else
+     p^.Caption:=Gr.NameGroup;
+    p^.Props:=GetInfo(j);
+    TV.Expanded[nGroup]:=p^.Expanded;
+   end;
+ TV.RepaintNode(nGroup);
+end;
+
+procedure TfmViewClients.CheckItemClient(Item:THAOPCItem;
+  NodeGroup: PVirtualNode);
+
+function GetInfo:string;
+ const
+  fmt='%s  %s <-> %s  %s';
+ var
+  s,s1:string;
+begin
+  s:='';
+  if (Item.AccessRight and OPC_Readable)=OPC_Readable then
+   s:='R';
+  if (Item.AccessRight and OPC_Writeable)=OPC_Writeable then
+   s:=s+'W';
+
+  if Item.Active then
+   s1:='ДА'
+  else
+   s1:='НЕТ';
+
+  result:=format(fmt,[s1,VarTypeToStr(Item.CanonicalDataType),VarTypeToStr(Item.RequestedDatatype),s]);
+end;
+
+var n,nItem:PVirtualNode;
+    p:PTVClientItem;
+    i:integer;
+
+
+begin
+ nItem:=nil;
+ n:=TV.GetFirstChild(NodeGroup);
+ while n<>nil do
+  begin
+   p:=TV.GetNodeData(n);
+   if p<>nil then
+    if (p^.TypeNode=tn_Item) and (p^.Handle=Item.ServerHandle) then
+     begin
+       nItem:=n;
+       break;
+     end;
+   n:=TV.GetNextSibling(n);
+  end;
+
+ if nItem=nil then
+  begin
+   nItem:=TV.AddChild(NodeGroup);
+   p:=TV.GetNodeData(nItem);
+   p^.TypeNode:=tn_Item;
+   p^.Handle:=Item.ServerHandle;
+ //  p^.Caption:=GetInfo;
+   p^.Deleted:=false;
+  end
+ else
+  if p<>nil then
+    p^.Deleted:=false;
+
+ if p<>nil then
+  begin
+    p^.Caption:=Item.FullName;
+    p^.Props:=GetInfo;
+  end;
+
+ TV.RepaintNode(nItem);
+end;
+
+procedure TfmViewClients.CheckServerClient(DA:THADAOBJ);
+
+function GetInfo:string;
+ const
+  fmt='%d';
+begin
+  result:=format(fmt,[DA.GroupCount]);
+end;
+
+var n,nServer:PVirtualNode;
+    p:PTVClientItem;
+    i:integer;
+
+
+begin
+ nServer:=nil;
+ n:=TV.GetFirst;
+ while n<>nil do
+  begin
+   p:=TV.GetNodeData(n);
+   if p<>nil then
+    if (p^.TypeNode=tn_Server) and (p^.Handle=DA.hServer) then
+     begin
+       nServer:=n;
+       break;
+     end;
+   n:=TV.GetNextSibling(n);
+  end;
+
+ if nServer=nil then
+  begin
+   nServer:=TV.AddChild(nil);
+   p:=TV.GetNodeData(nServer);
+   p^.TypeNode:=tn_Server;
+   p^.Handle:=DA.hServer;
+ //  p^.Caption:=GetInfo;
+   p^.Deleted:=false;
+   p^.Expanded:=false;
+  end
+ else
+  if p<>nil then
+   p^.Deleted:=false;
+
+ for i:=0 to DA.GroupCount-1 do
+  CheckGroupClient(THADAGroup(DA.Groups[i]),nServer);
+
+ if p<>nil then
+  begin
+   if DA.ClientName='' then
+    p^.Caption:='Имя не задано'
+   else
+    p^.Caption:=DA.ClientName;
+   p^.Props:=GetInfo;
+   TV.Expanded[nServer]:=p^.Expanded;
+  end;
+
+ TV.RepaintNode(nServer);
+end;
+
+procedure TfmViewClients.TVExpanded(Sender: TBaseVirtualTree;
+  Node: PVirtualNode);
+var p:PTVClientItem;
+begin
+ p:=TV.GetNodeData(Node);
+ if p<>nil then
+  p^.Expanded:=true;
+end;
+
+procedure TfmViewClients.TVCollapsed(Sender: TBaseVirtualTree;
+  Node: PVirtualNode);
+var p:PTVClientItem;
+begin
+ p:=TV.GetNodeData(Node);
+ if p<>nil then
+  p^.Expanded:=false;
+
+end;
+
+procedure TfmViewClients.TVPaintText(Sender: TBaseVirtualTree;
+  const TargetCanvas: TCanvas; Node: PVirtualNode; Column: TColumnIndex;
+  TextType: TVSTTextType);
+var p:PTVClientItem;
+begin
+ p:=TV.GetNodeData(Node);
+ if p=nil then exit;
+ case p^.TypeNode of
+  tn_Server: TargetCanvas.Font.Color:=clBlue;
+  tn_Group : TargetCanvas.Font.Color:=clGreen;
+  tn_Item  : TargetCanvas.Font.Color:=clWindowText;
+ end;
+end;
+
+procedure TfmViewClients.TVFocusChanged(Sender: TBaseVirtualTree;
+  Node: PVirtualNode; Column: TColumnIndex);
+const
+ fmttn_Server='Свойства: <Кол-во групп>';
+ fmttn_Group ='Свойства: <Кол-во тэгов> <Активность> <Время обновления мс.>';
+ fmttn_Item  ='Свойства: <Активность> <Тип данных> <Запрошенный тип данных> <Права доступа>';
+
+var p:PTVClientItem;
+begin
+ p:=TV.GetNodeData(Node);
+ if p=nil then exit;
+ case p^.TypeNode of
+  tn_Server: TV.Header.Columns[1].Text:=fmttn_Server;
+  tn_Group : TV.Header.Columns[1].Text:=fmttn_Group;
+  tn_Item  : TV.Header.Columns[1].Text:=fmttn_Item;
+ end;
+
+end;
+
+procedure TfmViewClients.LoadIniParams;
+var ini:TIniFile;
+    sec:string;
+    i:integer;
+begin
+ Inherited;
+ ini:=TIniFile.Create(ChangeFileExt(ParamStr(0),'.ini'));
+ try
+   sec:=ClassName;
+   Left:=ini.ReadInteger(sec,'Left',0);
+   Top:=ini.ReadInteger(sec,'Top',0);
+   Width:=ini.ReadInteger(sec,'Width',width);
+   Height:=ini.ReadInteger(sec,'Height',height);
+   for i:=0 to TV.Header.Columns.Count-1 do
+    TV.Header.Columns[i].Width:=ini.ReadInteger(sec,'TVColumnWidth'+inttostr(i),TV.Header.Columns[i].Width);
+
+ finally
+  ini.Free;
+ end;
+
+
+end;
+
+procedure TfmViewClients.SaveIniParams;
+var ini:TIniFile;
+    sec:string;
+    i:integer;
+begin
+ ini:=TIniFile.Create(ChangeFileExt(ParamStr(0),'.ini'));
+ try
+   sec:=ClassName;
+   ini.WriteInteger(sec,'Left',Left);
+   ini.WriteInteger(sec,'Top',Top);
+   ini.WriteInteger(sec,'Width',Width);
+   ini.WriteInteger(sec,'Height',Height);
+   for i:=0 to TV.Header.Columns.Count-1 do
+    ini.WriteInteger(sec,'TVColumnWidth'+inttostr(i),TV.Header.Columns[i].Width);
+ finally
+  ini.Free;
+ end;
+
+end;
+
+procedure TfmViewClients.FormDestroy(Sender: TObject);
+begin
+ SaveIniParams;
+end;
+
+end.

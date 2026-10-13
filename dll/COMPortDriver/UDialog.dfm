@@ -1,0 +1,244 @@
+object fmDialog: TfmDialog
+  Left = 898
+  Top = 492
+  BorderStyle = bsDialog
+  Caption = #1053#1072#1089#1090#1088#1086#1081#1082#1080
+  ClientHeight = 371
+  ClientWidth = 210
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  OldCreateOrder = False
+  Position = poDesktopCenter
+  OnClose = FormClose
+  OnCreate = FormCreate
+  PixelsPerInch = 96
+  TextHeight = 13
+  object BtnOK: TButton
+    Left = 28
+    Top = 331
+    Width = 75
+    Height = 25
+    Caption = #1054#1050
+    ModalResult = 1
+    TabOrder = 0
+    OnClick = BtnOKClick
+  end
+  object BtnCancel: TButton
+    Left = 112
+    Top = 331
+    Width = 75
+    Height = 25
+    Caption = #1054#1090#1084#1077#1085#1072
+    ModalResult = 2
+    TabOrder = 1
+  end
+  object PageControl1: TPageControl
+    Left = 0
+    Top = 1
+    Width = 205
+    Height = 324
+    ActivePage = TabSheet1
+    Style = tsFlatButtons
+    TabOrder = 2
+    object TabSheet1: TTabSheet
+      Caption = #1053#1072#1089#1090#1088#1086#1081#1082#1080' '#1087#1086#1088#1090#1072
+      object Label1: TLabel
+        Left = 12
+        Top = 13
+        Width = 28
+        Height = 13
+        Caption = #1055#1086#1088#1090':'
+      end
+      object Label2: TLabel
+        Left = 12
+        Top = 41
+        Width = 51
+        Height = 13
+        Caption = #1057#1082#1086#1088#1086#1089#1090#1100':'
+      end
+      object Label3: TLabel
+        Left = 12
+        Top = 69
+        Width = 44
+        Height = 13
+        Caption = #1044#1072#1085#1085#1099#1077':'
+      end
+      object Label4: TLabel
+        Left = 12
+        Top = 97
+        Width = 45
+        Height = 13
+        Caption = #1055#1072#1088#1080#1090#1077#1090':'
+      end
+      object Label5: TLabel
+        Left = 12
+        Top = 125
+        Width = 58
+        Height = 13
+        Caption = #1057#1090#1086#1087'. '#1073#1080#1090#1099':'
+      end
+      object Label6: TLabel
+        Left = 12
+        Top = 154
+        Width = 72
+        Height = 13
+        Caption = #1058#1072#1081#1084' '#1072#1091#1090' ('#1084#1089'.)'
+      end
+      object Label7: TLabel
+        Left = 12
+        Top = 184
+        Width = 86
+        Height = 52
+        Caption = #1050#1086#1083'-'#1074#1086' '#1087#1086#1087#1099#1090#1086#1082#13#10#1087#1086#1076#1072#1095#1080' '#1079#1072#1087#1088#1086#1089#1086#1074#13#10#1087#1088#1080' '#1086#1090#1089#1091#1090#1089#1090#1074#1080#1080#13#10#1089#1074#1103#1079#1080
+      end
+      object CBPort: TComboBox
+        Left = 88
+        Top = 10
+        Width = 84
+        Height = 21
+        Style = csDropDownList
+        ItemHeight = 13
+        TabOrder = 0
+        Items.Strings = (
+          'sdf'
+          'we'
+          'qwert'
+          'qwer'
+          'wert')
+      end
+      object CBBaud: TComboBox
+        Left = 88
+        Top = 38
+        Width = 84
+        Height = 21
+        Style = csDropDownList
+        ItemHeight = 13
+        TabOrder = 1
+        Items.Strings = (
+          '75'
+          '110'
+          '150'
+          '300'
+          '600'
+          '1200'
+          '1800'
+          '2400'
+          '4800'
+          '7200'
+          '9600'
+          '14400'
+          '19200'
+          '38400'
+          '56000'
+          '57600'
+          '115200'
+          '128000')
+      end
+      object CBByte: TComboBox
+        Left = 88
+        Top = 66
+        Width = 84
+        Height = 21
+        Style = csDropDownList
+        ItemHeight = 13
+        TabOrder = 2
+        Items.Strings = (
+          '5'
+          '6'
+          '7'
+          '8')
+      end
+      object CBPar: TComboBox
+        Left = 88
+        Top = 94
+        Width = 84
+        Height = 21
+        Style = csDropDownList
+        ItemHeight = 13
+        TabOrder = 3
+        Items.Strings = (
+          #1053#1077#1090
+          #1053#1077#1095#1077#1090'.'
+          #1063#1077#1090'.'
+          #1052#1072#1088#1082'.'
+          #1055#1088#1086#1073#1077#1083)
+      end
+      object CBSB: TComboBox
+        Left = 88
+        Top = 122
+        Width = 84
+        Height = 21
+        Style = csDropDownList
+        ItemHeight = 13
+        TabOrder = 4
+        Items.Strings = (
+          '1'
+          '1.5'
+          '2')
+      end
+      object EDTimeOut: TSpinEdit
+        Left = 88
+        Top = 152
+        Width = 85
+        Height = 22
+        MaxValue = 0
+        MinValue = 0
+        TabOrder = 5
+        Value = 0
+      end
+      object CBModem: TCheckBox
+        Left = 12
+        Top = 251
+        Width = 157
+        Height = 17
+        Caption = #1055#1086#1076#1082#1083#1102#1095#1077#1085#1080#1077' '#1095#1077#1088#1077#1079' '#1084#1086#1076#1077#1084
+        TabOrder = 6
+      end
+      object EDCountWrite: TSpinEdit
+        Left = 104
+        Top = 204
+        Width = 69
+        Height = 22
+        MaxValue = 10000
+        MinValue = 1
+        TabOrder = 7
+        Value = 1
+      end
+      object CBLog: TCheckBox
+        Left = 12
+        Top = 272
+        Width = 97
+        Height = 17
+        Caption = #1047#1072#1087#1080#1089#1100' '#1074' '#1083#1086#1075
+        TabOrder = 8
+      end
+    end
+    object TabSheet2: TTabSheet
+      Caption = #1054#1087#1080#1089#1072#1085#1080#1077
+      ImageIndex = 1
+      object RichEdit1: TRichEdit
+        Left = 0
+        Top = 0
+        Width = 197
+        Height = 293
+        Align = alClient
+        BorderStyle = bsNone
+        Lines.Strings = (
+          #1044#1088#1072#1081#1074#1077#1088' '#1087#1088#1077#1076#1085#1072#1079#1085#1072#1095#1077#1085' '#1076#1083#1103' '#1089#1074#1103#1079#1080' '#1089#1086' '
+          #1089#1095#1077#1090#1095#1080#1082#1072#1084#1080' '#1055#1057#1063
+          #1060#1086#1088#1084#1072#1090' '#1084#1072#1088#1096#1088#1091#1090#1072':'
+          '0.0.0.0.0.0.0.2.7_04900000'
+          #1076#1086' '#1079#1085#1072#1082#1072' "_" '#1084#1072#1088#1096#1088#1091#1090' '#1084#1086#1076#1077#1084#1072' 8 '#1073#1072#1081#1090' '
+          #1088#1072#1079#1076#1077#1083#1077#1085#1085#1099#1093' '#1090#1086#1095#1082#1086#1081', '#1087#1086#1089#1083#1077' '#1079#1085#1072#1082#1072' '
+          '"_" '#1090#1088#1080' '#1089#1080#1084#1074#1086#1083#1072' '#1072#1076#1088#1077#1089#1072' '#1089#1095#1077#1090#1095#1080#1082#1072', '
+          #1079#1072#1090#1077#1084' 5 '#1089#1080#1084#1074#1086#1083#1086#1074' '#1087#1072#1088#1086#1083#1103' '#1089#1095#1077#1090#1095#1080#1082#1072'.')
+        ScrollBars = ssBoth
+        TabOrder = 0
+      end
+    end
+  end
+end

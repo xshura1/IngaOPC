@@ -1,0 +1,45 @@
+{TODO :
+После всех действий с командой, 
+необходимо обнулить массив с данными}
+{DONE 1 : доработать формы отладки (позиция не заноситься в инишник)}
+{TODO : реализовать запись ошибок в методах SuncRead, SuncWrite}
+{TODO :
+При записи качества тэга какая то хрень со значением происходит 
+(меняется туда сюда);}
+{DONE :
+В типе TScriptData попробовать заменить тип поля Script на
+PWideString}
+{TODO : добавить проверку ошибок в методе SyncWrite после выполнения транзакции}
+{TODO : не забыть создать список команд у которых IDTrans=0}
+{TODO : попробовать оптимизировать ISyncRead}
+{DONE : Доделать THADriver (принимать и отображать сообщения от драйвера)}
+{DONE 1 :
+При добавлении, удалении, изменении статуса Items, необходимо
+выполнять скрипт "При добавлении Items", таким образом мы
+избавимся от лишнего траффика на устройство!!!}
+{DONE :
+еще раз посмотреть RefCount при добавлении, удалении, активации
+и т.д.}
+{DONE : BeginRead EndRead - почему нигде не используется ???}
+{TODO : просмотреть HAOPCItem.value и убрать преобразование типов}
+{DONE 1 : не забыть уничтожить детей у thabaseobj}
+{DONE 1 :
+сделать сортировку по однотипности скриптов 
+для записывающей транзакции !!!! и + не забыть что есть вычисляемые тэги}
+{DONE :
+оптимизировать такие конструкции
+for i:=0 to OPCMan.Controllers.Count-1 do}
+{DONE : 
+function THAOPCMan.PSExecuteGroupTrans(
+  GroupTrans: THAGroupTransaction): boolean;
+доделать не забыть!!!!}
+{DONE : 
+procedure THAOPCMan.AddCommand(Command: THAPSCommand; Controller:THAController);
+исправить на предмет добавления разных контроллеров}
+{DONE :
+procedure OpenObjList(OID:TOID; Recurse:boolean=false);
+    procedure CloseObjList;
+
+    function DataSetToGlobalData(DataSet:TDataSet):THAGlobalData;
+НУЖНО УДАЛИТЬ ИХ !!!!}
+ 

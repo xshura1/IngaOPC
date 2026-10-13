@@ -1,0 +1,544 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns="http://www.w3.org/TR/REC-html40">
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1251">
+<meta name=ProgId content=Word.Document>
+<meta name=Generator content="Microsoft Word 11">
+<meta name=Originator content="Microsoft Word 11">
+<link rel=File-List href="Драйвер.files/filelist.xml">
+<title>Быстрый старт</title>
+<!--[if gte mso 9]><xml>
+ <w:WordDocument>
+  <w:SpellingState>Clean</w:SpellingState>
+  <w:GrammarState>Clean</w:GrammarState>
+  <w:ValidateAgainstSchemas/>
+  <w:SaveIfXMLInvalid>false</w:SaveIfXMLInvalid>
+  <w:IgnoreMixedContent>false</w:IgnoreMixedContent>
+  <w:AlwaysShowPlaceholderText>false</w:AlwaysShowPlaceholderText>
+  <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
+ </w:WordDocument>
+</xml><![endif]--><!--[if gte mso 9]><xml>
+ <w:LatentStyles DefLockedState="false" LatentStyleCount="156">
+ </w:LatentStyles>
+</xml><![endif]-->
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{mso-style-parent:"";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;
+	text-underline:single;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;
+	text-underline:single;}
+span.SpellE
+	{mso-style-name:"";
+	mso-spl-e:yes;}
+span.GramE
+	{mso-style-name:"";
+	mso-gram-e:yes;}
+@page Section1
+	{size:595.3pt 841.9pt;
+	margin:2.0cm 42.5pt 2.0cm 3.0cm;
+	mso-header-margin:35.4pt;
+	mso-footer-margin:35.4pt;
+	mso-paper-source:0;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+<!--[if gte mso 10]>
+<style>
+ /* Style Definitions */
+ table.MsoNormalTable
+	{mso-style-name:"Обычная таблица";
+	mso-tstyle-rowband-size:0;
+	mso-tstyle-colband-size:0;
+	mso-style-noshow:yes;
+	mso-style-parent:"";
+	mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
+	mso-para-margin:0cm;
+	mso-para-margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:10.0pt;
+	font-family:"Times New Roman";
+	mso-ansi-language:#0400;
+	mso-fareast-language:#0400;
+	mso-bidi-language:#0400;}
+</style>
+<![endif]-->
+</head>
+
+<body lang=RU link=blue vlink=purple style='tab-interval:35.4pt'>
+
+<div class=Section1>
+
+<p class=MsoNormal align=center style='text-align:center;text-indent:26.95pt;
+line-height:150%'><b>Драйвер устройства.</b></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt;line-height:
+150%'>Драйвер представляет собой динамически подключаемую библиотеку (<span
+lang=EN-US style='mso-ansi-language:EN-US'>DLL</span>), написанную на каком-
+либо языке высокого уровня. В драйвере реализуются следующие функции:</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt;line-height:
+150%'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+class=GramE><b><span lang=EN-US style='mso-ansi-language:EN-US'>function</span></b></span><span
+lang=EN-US style='mso-ansi-language:EN-US'> Write(<span class=SpellE>ppDriverData</span>
+: <a href="#DriverData"><span class=SpellE>pDriverData</span></a>):<span
+class=SpellE><b>HResult</b></span><b>; <span class=SpellE>stdcall</span>;</b><o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt'><span lang=EN-US style='mso-ansi-language:EN-US'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt'><b style='mso-bidi-font-weight:normal'>Назначение:&nbsp;<o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;text-indent:
+-.05pt'>данная функция служит для принятия пакета данных от сервера и для
+формирования физического пакета, который затем будет отправлен на устройство по
+какому- либо каналу связи (<span lang=EN-US style='mso-ansi-language:EN-US'>COM</span>,
+<span lang=EN-US style='mso-ansi-language:EN-US'>LPT</span>, <span lang=EN-US
+style='mso-ansi-language:EN-US'>TCP</span>/<span lang=EN-US style='mso-ansi-language:
+EN-US'>IP</span><span lang=EN-US> </span>и т.д.).</p>
+
+<p class=MsoNormal style='margin-left:99.0pt;text-align:justify;text-indent:
+-.05pt'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt'><b style='mso-bidi-font-weight:normal'>Когда вызывается:<o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;text-indent:
+-.05pt'><span style='mso-bidi-font-style:italic'>функция вызывается сервером
+всякий раз, когда необходимо отослать данные на устройство.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:99.0pt;text-align:justify;text-indent:
+-.05pt'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt'><b style='mso-bidi-font-weight:normal'>Возвращаемое значение:<o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;text-indent:
+-.05pt'><span class=SpellE><span lang=EN-US style='mso-ansi-language:EN-US'>HResult</span></span>
+= <span lang=EN-US style='mso-ansi-language:EN-US'>s</span>_<span lang=EN-US
+style='mso-ansi-language:EN-US'>ok</span><span lang=EN-US> </span>– драйвер
+принял пакет данных и сервер ожидает ответа на пакет посредством функции <span
+lang=EN-US style='mso-ansi-language:EN-US'>Read</span> (см. ниже);</p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;text-indent:
+-.05pt'><span class=SpellE><span lang=EN-US style='mso-ansi-language:EN-US'>HResult</span></span>
+= <span lang=EN-US style='mso-ansi-language:EN-US'>s</span>_<span lang=EN-US
+style='mso-ansi-language:EN-US'>false</span> – в данный момент драйвер не может
+принять пакет данных, сервер пошлет этот пакет позже;</p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;text-indent:
+-.05pt'>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><b><o:p>&nbsp;</o:p></b></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><b><o:p>&nbsp;</o:p></b></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+class=GramE><b><span lang=EN-US style='mso-ansi-language:EN-US'>function</span></b></span><span
+lang=EN-US style='mso-ansi-language:EN-US'> Read(out <span class=SpellE>ppDriverData</span>
+: <a href="#DriverData"><span class=SpellE>pDriverData</span></a>):<span
+class=SpellE><b>HResult</b></span><b>; <span class=SpellE>stdcall</span>;</b><o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+lang=EN-US style='mso-ansi-language:EN-US'>&nbsp;<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><b
+style='mso-bidi-font-weight:normal'>Назначение:&nbsp;</b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'>функция служит
+для принятия сервером данных от устройства.</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt'><b style='mso-bidi-font-weight:normal'>Когда вызывается:</b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+style='mso-bidi-font-style:italic'>вызывается постоянно.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt'><b style='mso-bidi-font-weight:normal'>Возвращаемое значение:<o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;text-indent:
+-.05pt'><span class=SpellE><span lang=EN-US style='mso-ansi-language:EN-US'>HResult</span></span>
+= <span lang=EN-US style='mso-ansi-language:EN-US'>s</span>_<span lang=EN-US
+style='mso-ansi-language:EN-US'>ok</span><span lang=EN-US> </span>– у драйвера
+есть данные для сервера;</p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;text-indent:
+-.05pt'><span class=SpellE><span lang=EN-US style='mso-ansi-language:EN-US'>HResult</span></span>
+= <span lang=EN-US style='mso-ansi-language:EN-US'>s</span>_<span lang=EN-US
+style='mso-ansi-language:EN-US'>false</span> – у драйвера нет данных для
+сервера;</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+lang=EN-US style='mso-ansi-language:EN-US'>&nbsp;</span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+class=GramE><b><span lang=EN-US style='mso-ansi-language:EN-US'>function</span></b></span><span
+lang=EN-US style='mso-ansi-language:EN-US'> <span class=SpellE>OpenDriver:<b>HResult</b></span><b>;
+<span class=SpellE>stdcall</span>;</b><o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+lang=EN-US style='mso-ansi-language:EN-US'>&nbsp;<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><b
+style='mso-bidi-font-weight:normal'>Назначение</b><b style='mso-bidi-font-weight:
+normal'><span lang=EN-US style='mso-ansi-language:EN-US'>:&nbsp;</span></b><span
+lang=EN-US style='mso-ansi-language:EN-US'><o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;text-indent:
+-.05pt'>в этой функции обычно реализовывается инициализация драйвера (открытие
+канала связи, считывание различных параметров, необходимых для работы
+драйвера).</p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;text-indent:
+-.05pt'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt'><b style='mso-bidi-font-weight:normal'>Когда вызывается:</b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;text-indent:
+-.05pt'><span style='mso-bidi-font-style:italic'>функция вызывается при
+подключении хотя бы одного клиента к серверу.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;text-indent:
+-.05pt'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt'><b style='mso-bidi-font-weight:normal'>Возвращаемое</b><b
+style='mso-bidi-font-weight:normal'><span style='mso-ansi-language:EN-US'> </span>значение</b><b
+style='mso-bidi-font-weight:normal'><span lang=EN-US style='mso-ansi-language:
+EN-US'>:<o:p></o:p></span></b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+class=SpellE><span lang=EN-US style='mso-ansi-language:EN-US'>HResult</span></span><span
+lang=EN-US style='mso-ansi-language:EN-US'> = <span class=SpellE>s_ok</span><o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><b><span
+lang=EN-US style='mso-ansi-language:EN-US'>&nbsp;<o:p></o:p></span></b></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+lang=EN-US style='mso-ansi-language:EN-US'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+class=GramE><b><span lang=EN-US style='mso-ansi-language:EN-US'>function</span></b></span><span
+lang=EN-US style='mso-ansi-language:EN-US'> <span class=SpellE>CloseDriver:<b>HResult</b></span><b>;
+<span class=SpellE>stdcall</span>;<o:p></o:p></b></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+lang=EN-US style='mso-ansi-language:EN-US'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify'><span
+lang=EN-US style='mso-ansi-language:EN-US'>&nbsp;</span><b style='mso-bidi-font-weight:
+normal'>Назначение</b><b style='mso-bidi-font-weight:normal'><span lang=EN-US
+style='mso-ansi-language:EN-US'>:&nbsp;</span></b><span lang=EN-US
+style='mso-ansi-language:EN-US'><o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'>в этой функции
+должен быть реализован код для закрытия каналов связи.</p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt'><b style='mso-bidi-font-weight:normal'>Когда вызывается:</b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+style='mso-bidi-font-style:italic'>функция будет вызвана сервером, когда будет
+отключен последний клиент.</span></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt'><b style='mso-bidi-font-weight:normal'><o:p>&nbsp;</o:p></b></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt'><b style='mso-bidi-font-weight:normal'>Возвращаемое значение:<o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+class=SpellE><span lang=EN-US style='mso-ansi-language:EN-US'>HResult</span></span>
+= <span lang=EN-US style='mso-ansi-language:EN-US'>s</span>_<span lang=EN-US
+style='mso-ansi-language:EN-US'>ok</span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+lang=EN-US style='mso-ansi-language:EN-US'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+lang=EN-US style='mso-ansi-language:EN-US'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+class=GramE><b style='mso-bidi-font-weight:normal'><span lang=EN-US
+style='mso-ansi-language:EN-US'>function</span></b></span><b style='mso-bidi-font-weight:
+normal'><span lang=EN-US style='mso-ansi-language:EN-US'> </span></b><a
+name=ShowDialog></a><span class=SpellE><span style='mso-bookmark:ShowDialog'><span
+lang=EN-US style='mso-ansi-language:EN-US'>ShowDialog</span></span><span
+lang=EN-US style='mso-ansi-language:EN-US'>:<b style='mso-bidi-font-weight:
+normal'>HResult</b></span></span><b style='mso-bidi-font-weight:normal'><span
+lang=EN-US style='mso-ansi-language:EN-US'>; <span class=SpellE>stdcall</span>;<o:p></o:p></span></b></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><b
+style='mso-bidi-font-weight:normal'><span lang=EN-US style='mso-ansi-language:
+EN-US'><o:p>&nbsp;</o:p></span></b></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><b
+style='mso-bidi-font-weight:normal'>Назначение:<o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'>в этой функции
+может быть реализован код показа окна настроек драйвера.</p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify'><b
+style='mso-bidi-font-weight:normal'>Когда вызывается:<o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'>функция будет
+вызвана сервером, когда пользователь выберет драйвер из списка драйверов в меню
+&quot;<a href="Интерфейс.htm#Настройки_драйверов">Настройки драйверов</a>&quot;.</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><b
+style='mso-bidi-font-weight:normal'>Возвращаемое значение:<o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+class=SpellE><span lang=EN-US style='mso-ansi-language:EN-US'>HResult</span></span><span
+lang=EN-US style='mso-ansi-language:EN-US'> = <span class=SpellE>s_ok</span><o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+lang=EN-US style='mso-ansi-language:EN-US'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+lang=EN-US style='mso-ansi-language:EN-US'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+lang=EN-US style='mso-ansi-language:EN-US'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'>В функциях <b
+style='mso-bidi-font-weight:normal'><span lang=EN-US style='mso-ansi-language:
+EN-US'>Write</span></b><span lang=EN-US> </span>и <b style='mso-bidi-font-weight:
+normal'><span lang=EN-US style='mso-ansi-language:EN-US'>Read</span></b><span
+lang=EN-US> </span>используется следующая структура:</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'>&nbsp;</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+class=SpellE><span lang=EN-US style='mso-ansi-language:EN-US'>pDriverData</span></span><span
+lang=EN-US style='mso-ansi-language:EN-US'> = ^<span class=SpellE>DriverData</span>;<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><a
+name=DriverData></a><span class=SpellE><span style='mso-bookmark:DriverData'><span
+lang=EN-US style='mso-ansi-language:EN-US'>DriverData</span></span></span><span
+style='mso-bookmark:DriverData'></span><span lang=EN-US style='mso-ansi-language:
+EN-US'> = <b>record</b><o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+style='mso-tab-count:1'>   </span><span lang=EN-US style='mso-ansi-language:
+EN-US'>Handle<span style='mso-tab-count:3'>                         </span><span
+class=GramE>:<span class=SpellE>dword</span></span>;<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+lang=EN-US style='mso-ansi-language:EN-US'><span style='mso-tab-count:1'>   </span><span
+class=SpellE><span class=GramE>szAddress</span></span><span style='mso-tab-count:
+2'>                    </span>:<span class=SpellE>POleStr</span>;<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+lang=EN-US style='mso-ansi-language:EN-US'><span style='mso-tab-count:1'>   </span><span
+class=SpellE><span class=GramE>szNoCommand</span></span><span style='mso-tab-count:
+1'>            </span>:<span class=SpellE>POleStr</span>;<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+lang=EN-US style='mso-ansi-language:EN-US'><span style='mso-tab-count:1'>   </span><span
+class=SpellE>Param</span><span style='mso-tab-count:3'>                          </span><span
+class=GramE>:<span class=SpellE>dword</span></span>;<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+lang=EN-US style='mso-ansi-language:EN-US'><span style='mso-tab-count:1'>   </span><span
+class=SpellE><span class=GramE>dwDataSize</span></span><span style='mso-tab-count:
+2'>                 </span>:<span class=SpellE>dword</span>;<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+lang=EN-US style='mso-ansi-language:EN-US'><span style='mso-tab-count:1'>   </span><span
+class=SpellE><span class=GramE>pData</span></span><span style='mso-tab-count:
+1'>   </span><span style='mso-tab-count:2'>                        </span>:<span
+class=SpellE>PByteArray</span>;<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+lang=EN-US style='mso-ansi-language:EN-US'><span style='mso-tab-count:1'>   </span>Result</span><span
+style='mso-tab-count:3'>                          </span><span class=GramE>:<span
+class=SpellE><span lang=EN-US style='mso-ansi-language:EN-US'>dword</span></span></span>;</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><span
+class=GramE><b style='mso-bidi-font-weight:normal'><span lang=EN-US
+style='mso-ansi-language:EN-US'>end</span></b></span><b style='mso-bidi-font-weight:
+normal'>;<o:p></o:p></b></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><b
+style='mso-bidi-font-weight:normal'>Описание полей структуры:<o:p></o:p></b></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;line-height:
+150%'><b><span lang=EN-US style='mso-ansi-language:EN-US'>Handle</span></b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;line-height:
+150%'>Уникальный идентификатор пакета, который необходим серверу для приведения
+соответствия между переданным пакетом в функции <span lang=EN-US
+style='mso-ansi-language:EN-US'>Write</span><span lang=EN-US> </span>и принятым
+пакетом в функции <span lang=EN-US style='mso-ansi-language:EN-US'>Read</span>.
+Пример: драйвер принял пакет от сервера, сформировал на его основе физический
+пакет, отослал пакет на устройство, затем принял ответ. Этот ответ, драйвер
+упаковывает в структуру <span class=SpellE><span lang=EN-US style='mso-ansi-language:
+EN-US'>DriverData</span></span>, <span lang=EN-US style='mso-ansi-language:
+EN-US'>Handle</span><span lang=EN-US> </span>этого пакета должен быть таким <span
+class=GramE>же</span> как и у переданного сервером. В подготовленном пакете для
+отправки в сервер (функция <span lang=EN-US style='mso-ansi-language:EN-US'>Read</span>)
+этот идентификатор может принять значение равное 0, в этом случае сервер будет
+искать соответствие по строкам адреса и номеру команды (см. ниже).</p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;line-height:
+150%'><span class=SpellE><span class=GramE><b><span lang=EN-US
+style='mso-ansi-language:EN-US'>szAddress</span></b></span></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;line-height:
+150%'>Строковое значение адреса устройства. На его основе, драйвер должен
+сформировать данные об адресе, понятные устройству. Адрес устройства задается в
+редакторе конфигурации. В возвращаемой структуре (функция <span lang=EN-US
+style='mso-ansi-language:EN-US'>Read</span>) допускается оставлять это поле
+пустым (<span lang=EN-US style='mso-ansi-language:EN-US'>nil</span>), если
+идентификатор пакета (<span lang=EN-US style='mso-ansi-language:EN-US'>Handle</span>)
+не равен 0.</p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt;line-height:150%'><span class=SpellE><span class=GramE><b><span
+lang=EN-US style='mso-ansi-language:EN-US'>szNoCommand</span></b></span></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;line-height:
+150%'>Строковое значение номера команды. На его основе, драйвер формирует номер
+команды для устройства, или же какие либо другие действия. В возвращаемой
+структуре (функция <span lang=EN-US style='mso-ansi-language:EN-US'>Read</span>)
+допускается оставлять это поле пустым (<span lang=EN-US style='mso-ansi-language:
+EN-US'>nil</span>), если идентификатор пакета (<span lang=EN-US
+style='mso-ansi-language:EN-US'>Handle</span>) не равен 0.</p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt;line-height:150%'><span class=SpellE><b><span lang=EN-US
+style='mso-ansi-language:EN-US'>Param</span></b></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;line-height:
+150%'>Дополнительный, пользовательский параметр, который передается без
+изменения в драйвер и который может быть любым при формировании ответа в
+функции <span lang=EN-US style='mso-ansi-language:EN-US'>Read</span>.</p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt;line-height:150%'><span class=SpellE><span class=GramE><b><span
+lang=EN-US style='mso-ansi-language:EN-US'>dwDataSize</span></b></span></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;line-height:
+150%'>Указывает кол-во байт данных в массиве <span class=SpellE><span
+lang=EN-US style='mso-ansi-language:EN-US'>pData</span></span>.</p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt;line-height:150%'><span class=SpellE><span class=GramE><b><span
+lang=EN-US style='mso-ansi-language:EN-US'>pData</span></b></span></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;line-height:
+150%'>Массив байтов длиной <span class=SpellE><span class=GramE><span
+lang=EN-US style='mso-ansi-language:EN-US'>dwDataSize</span></span></span> в
+котором содержатся данные для отправки данных в устройство (функция <span
+lang=EN-US style='mso-ansi-language:EN-US'>Write</span>) и для отправки
+принятых данных от устройства в функции <span lang=EN-US style='mso-ansi-language:
+EN-US'>Read</span>.</p>
+
+<p class=MsoNormal style='margin-left:27.0pt;text-align:justify;text-indent:
+-.05pt;line-height:150%'><b><span lang=EN-US style='mso-ansi-language:EN-US'>Result</span></b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;line-height:
+150%'>В этом поле содержится результат выполнения команды драйвером, может
+иметь любое значение, которое будет использовано при обработке данных в <span
+class=SpellE>скриптах</span> шаблона. В случае отправки данных в драйвер
+(функция <span lang=EN-US style='mso-ansi-language:EN-US'>Write</span>) это
+поле не используется.</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:26.95pt;line-height:
+150%'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='margin-left:27.0pt;line-height:150%'><b>Распределение
+памяти для структуры </b><span class=SpellE><b><span lang=EN-US
+style='mso-ansi-language:EN-US'>DriverData</span></b></span><b>.<o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;line-height:
+150%'>В случае отправки данных сервером драйверу (функция <span lang=EN-US
+style='mso-ansi-language:EN-US'>Write</span>), память под структуру
+распределяется сервером.</p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify;line-height:
+150%'>В случае передачи данных серверу (функция <span lang=EN-US
+style='mso-ansi-language:EN-US'>Read</span>), память под структуру должна
+выделяться <span class=GramE>драйвером</span> а освобождаться сервером. Пример
+распределения памяти:</p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+class=SpellE><span class=GramE><b><span lang=EN-US style='mso-ansi-language:
+EN-US'>var</span></b></span></span><span lang=EN-US style='mso-ansi-language:
+EN-US'> <span class=SpellE>pdd:pDriverData</span>;<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+lang=EN-US style='mso-ansi-language:EN-US'>&nbsp;<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+class=SpellE><span class=GramE><span lang=EN-US style='mso-ansi-language:EN-US'>pdd</span></span></span><span
+lang=EN-US style='mso-ansi-language:EN-US'>:=<span class=SpellE><b>coTaskMemAlloc</b></span>(<span
+class=SpellE>sizeof</span>(<span class=SpellE>DriverData</span>));<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+class=SpellE><span class=GramE><span lang=EN-US style='mso-ansi-language:EN-US'>pdd</span></span><span
+lang=EN-US style='mso-ansi-language:EN-US'>^.szAddress</span></span><span
+lang=EN-US style='mso-ansi-language:EN-US'>:=<span class=SpellE><b>StringToLPOleStr</b></span>('Address');<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+class=SpellE><span class=GramE><span lang=EN-US style='mso-ansi-language:EN-US'>pdd</span></span><span
+lang=EN-US style='mso-ansi-language:EN-US'>^.szNoCommand</span></span><span
+lang=EN-US style='mso-ansi-language:EN-US'>:=<span class=SpellE><b>StringToLPOleStr</b></span>('No');<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+class=SpellE><span class=GramE><span lang=EN-US style='mso-ansi-language:EN-US'>pdd</span></span><span
+lang=EN-US style='mso-ansi-language:EN-US'>^.dwDataSize</span></span><span
+lang=EN-US style='mso-ansi-language:EN-US'>:=20; // </span>пример<span
+lang=EN-US style='mso-ansi-language:EN-US'>!<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:45.0pt;text-align:justify'><span
+class=SpellE><span class=GramE><span lang=EN-US style='mso-ansi-language:EN-US'>pdd</span></span><span
+lang=EN-US style='mso-ansi-language:EN-US'>^.pData</span></span><span
+lang=EN-US style='mso-ansi-language:EN-US'>:=<span class=SpellE><b>coTaskMemAlloc</b></span>(<span
+class=SpellE>pdd^.dwDataSize</span>);<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:27.0pt;line-height:
+150%'><span lang=EN-US style='mso-ansi-language:EN-US'>&nbsp;<o:p></o:p></span></p>
+
+</div>
+
+</body>
+
+</html>

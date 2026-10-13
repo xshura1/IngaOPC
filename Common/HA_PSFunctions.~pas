@@ -1,0 +1,29 @@
+unit HA_PSFunctions;
+
+interface
+ uses windows,Classes,uPSCompiler,uPSRuntime,uPSDebugger,SysUtils,ActiveX,uPSComponent;
+
+
+ procedure SIRegisterHAFunc(CL: TPSPascalCompiler);
+ procedure RIRegisterHAFunc(cl: TPSRuntimeClassImporter; se: TPSExec);
+
+
+implementation
+ uses Math;
+{function VariantToByteArray(v:olevariant):array [0..7] of byte;
+begin
+
+end;}
+
+
+procedure SIRegisterHAFunc(CL: TPSPascalCompiler);
+begin
+ CL.AddDelphiFunction('Function Power(const Base, Exponent: Extended): Extended;');
+end;
+
+procedure RIRegisterHAFunc(cl: TPSRuntimeClassImporter; se: TPSExec);
+begin
+ SE.RegisterDelphiFunction(@Power, 'POWER', cdRegister);
+end;
+
+end.

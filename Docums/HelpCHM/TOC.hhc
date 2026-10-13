@@ -1,0 +1,57 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<HTML>
+<HEAD>
+<meta name="GENERATOR" content="Microsoft&reg; HTML Help Workshop 4.1">
+<!-- Sitemap 1.0 -->
+</HEAD><BODY>
+<OBJECT type="text/site properties">
+	<param name="Window Styles" value="0x800027">
+</OBJECT>
+<UL>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="&Iacute;&agrave;&ccedil;&iacute;&agrave;&divide;&aring;&iacute;&egrave;&aring;">
+		<param name="Local" value="Назначение.htm">
+		</OBJECT>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="&Egrave;&iacute;&ograve;&aring;&eth;&ocirc;&aring;&eacute;&ntilde;">
+		<param name="Local" value="Интерфейс.htm">
+		</OBJECT>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="&Iuml;&eth;&egrave;&iacute;&ouml;&egrave;&iuml; &eth;&agrave;&aacute;&icirc;&ograve;&ucirc;">
+		<param name="Local" value="Принцип работы.htm">
+		</OBJECT>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="&Auml;&eth;&agrave;&eacute;&acirc;&aring;&eth;">
+		<param name="Local" value="Драйвер.htm">
+		</OBJECT>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="&Dstrok;&aring;&auml;&agrave;&ecirc;&ograve;&icirc;&eth; &oslash;&agrave;&aacute;&euml;&icirc;&iacute;&icirc;&acirc;">
+		<param name="Local" value="Редактор шаблонов.htm">
+		</OBJECT>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="&Dstrok;&aring;&auml;&agrave;&ecirc;&ograve;&icirc;&eth; &ecirc;&icirc;&iacute;&ocirc;&egrave;&atilde;&oacute;&eth;&agrave;&ouml;&egrave;&egrave;">
+		<param name="Local" value="Редактор конфигурации.htm">
+		</OBJECT>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="&Icirc;&iuml;&egrave;&ntilde;&agrave;&iacute;&egrave;&aring; &auml;&icirc;&ntilde;&ograve;&oacute;&iuml;&iacute;&ucirc;&otilde; &ecirc;&euml;&agrave;&ntilde;&ntilde;&icirc;&acirc;">
+		<param name="Local" value="Описание доступных классов.htm">
+		</OBJECT>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="&Ecirc;&icirc;&iacute;&ograve;&agrave;&ecirc;&ograve;&iacute;&agrave;&yuml; &egrave;&iacute;&ocirc;&icirc;&eth;&igrave;&agrave;&ouml;&egrave;&yuml;">
+		<param name="Local" value="Контактная информация.htm">
+		</OBJECT>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="&Iuml;&eth;&egrave;&igrave;&aring;&eth;&ucirc; &eth;&agrave;&aacute;&icirc;&ograve;&ucirc;">
+		</OBJECT>
+	<UL>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="&Ograve;&aring;&ntilde;&ograve; OPC &egrave;&iacute;&ograve;&aring;&ocirc;&aring;&eacute;&ntilde;&icirc;&acirc;">
+			<param name="Local" value="Пример работы тест OPC интерфейсов.htm">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Modbus &iuml;&eth;&icirc;&ograve;&icirc;&ecirc;&icirc;&euml;">
+			<param name="Local" value="Пример работы Modbus протокол.htm">
+			</OBJECT>
+	</UL>
+</UL>
+</BODY></HTML>

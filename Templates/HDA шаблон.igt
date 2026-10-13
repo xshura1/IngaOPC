@@ -1,0 +1,3 @@
+<Header FileDescription="IngaOPC Template File" Version="0101" Checked="-1" Script="begin
+
+end."><T10 OID="1" Name="Template" DateCreate="21.03.2007 15:20:00" DateLastUpdate="21.03.2007 15:35:46" CompileID="4"><T20 OID="2" Name="Tags"><T122 OID="10" Name="HDA Tag" DataType="17" Readable="True" Writeable="True"/><T122 OID="11" Name="HDA Tag1" DataType="17" Readable="True" Writeable="True"/><T122 OID="12" Name="HDA Tag2" DataType="17" Readable="True" Writeable="True"/><T122 OID="13" Name="HDA Tag3" DataType="17" Readable="True" Writeable="True"/></T20><T25 OID="3" Name="Properties"/><T30 OID="4" Name="Commands"/><T38 OID="5" Name="Timers"/></T10></Header>

@@ -1,0 +1,192 @@
+unit HA_fmViewLog;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, HA_CustomFM2, VirtualTrees, ExtCtrls, SynEdit, StdCtrls,ha_wmConst,
+  inifiles;
+
+type
+  TfmViewLog = class(TForm)
+    Panel1: TPanel;
+    TV: TVirtualStringTree;
+    procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure TVGetText(Sender: TBaseVirtualTree; Node: PVirtualNode;
+      Column: TColumnIndex; TextType: TVSTTextType;
+      var CellText: WideString);
+    procedure FormDestroy(Sender: TObject);
+  private
+    { Private declarations }
+//    fFileHandle:THandle;
+
+//    fSize:integer;
+//    fSt:TStringList;
+    procedure LoadLog;
+    procedure OnChangeHALog(var Msg:TMessage); message wm_ChangeHALog;
+    procedure LoadIniParams;
+    procedure SaveIniParams;
+  public
+    { Public declarations }
+  end;
+
+
+implementation
+  uses ha_log;
+{$R *.dfm}
+
+
+ type
+  PLogData=^TLogData;
+  TLogData=record
+   Data:widestring;
+   Obj :widestring;
+   Func:widestring;
+   ErrNo:widestring;
+   DescrErr:widestring;
+  end;
+
+procedure TfmViewLog.FormCreate(Sender: TObject);
+begin
+  inherited;
+ TV.NodeDataSize:=sizeof(TLogData);
+ LoadIniParams;
+ LoadLog;
+ if log<>nil then
+   log.HandleWin:=Handle;
+end;
+
+procedure TfmViewLog.LoadLog;
+var st:TStringList;
+    p:PLogData;
+    i,j,k:integer;
+    N:PVirtualNode;
+    s,slog:string;
+begin
+ st:=TStringList.Create;
+ tv.BeginUpdate;
+ try
+  st.LoadFromFile(ChangeFileExt(ParamStr(0),'.log'));
+  for i:=0 to st.Count-1 do
+   begin
+    N:=TV.AddChild(nil);
+    p:=TV.GetNodeData(n);
+    if p=nil then exit;
+    s:='';
+    k:=0;
+    slog:=st[i];
+    for j:=1 to Length(slog) do
+     if (slog[j]=#09) or (j>=Length(slog)) then
+      begin
+       if (j>=Length(slog)) then
+        s:=s+slog[j];
+       case k of
+        0:p^.Data:=s;
+        1:p^.Obj:=s;
+        2:p^.Func:=s;
+        3:p^.ErrNo:=s;
+        4:p^.DescrErr:=s;
+       end;
+       inc(k);
+       s:='';
+       if k>4 then k:=0; 
+      end
+     else
+      s:=s+slog[j];
+   end;
+ finally
+  st.Free;
+  tv.EndUpdate;
+  tv.FocusedNode:=tv.GetLast;
+ // tv.Selected[tv.GetLast]:=true;
+ // tv.IsVisible[tv.GetLast]:=true;
+ // tv.RepaintNode(tv.FocusedNode);
+ // tv.UpdateVerticalScrollBar(true);
+
+ end;
+end;
+
+procedure TfmViewLog.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  inherited;
+ if log<>nil then
+  log.HandleWin:=0;
+// CloseHandle(fFileHandle);
+// fSt.Free;
+end;
+
+procedure TfmViewLog.OnChangeHALog(var Msg: TMessage);
+begin
+ {R:=SE.CaretY;
+ f:=Se.Lines.Count=R;
+ SE.Lines.Add(string(Msg.wparam));
+ if f then
+  SE.caretY:=R+1;
+  }
+end;
+
+procedure TfmViewLog.TVGetText(Sender: TBaseVirtualTree;
+  Node: PVirtualNode; Column: TColumnIndex; TextType: TVSTTextType;
+  var CellText: WideString);
+var p:PLogData;
+begin
+ p:=tv.GetNodeData(Node);
+ if p=nil then exit;
+ case Column of
+  0:CellText:=p^.Data;
+  1:CellText:=p^.Obj;
+  2:CellText:=p^.Func;
+  3:CellText:=p^.ErrNo;
+  4:CellText:=p^.DescrErr;
+ end;
+end;
+
+procedure TfmViewLog.LoadIniParams;
+var ini:TIniFile;
+    sec:string;
+    i:integer;
+begin
+ Inherited;
+ ini:=TIniFile.Create(ChangeFileExt(ParamStr(0),'.ini'));
+ try
+   sec:=ClassName;
+   Left:=ini.ReadInteger(sec,'Left',0);
+   Top:=ini.ReadInteger(sec,'Top',0);
+   Width:=ini.ReadInteger(sec,'Width',width);
+   Height:=ini.ReadInteger(sec,'Height',height);
+   for i:=0 to TV.Header.Columns.Count-1 do
+    TV.Header.Columns[i].Width:=ini.ReadInteger(sec,'TVColumnWidth'+inttostr(i),TV.Header.Columns[i].Width);
+
+ finally
+  ini.Free;
+ end;
+
+end;
+
+procedure TfmViewLog.SaveIniParams;
+var ini:TIniFile;
+    sec:string;
+    i:integer;
+begin
+ ini:=TIniFile.Create(ChangeFileExt(ParamStr(0),'.ini'));
+ try
+   sec:=ClassName;
+   ini.WriteInteger(sec,'Left',Left);
+   ini.WriteInteger(sec,'Top',Top);
+   ini.WriteInteger(sec,'Width',Width);
+   ini.WriteInteger(sec,'Height',Height);
+   for i:=0 to TV.Header.Columns.Count-1 do
+    ini.WriteInteger(sec,'TVColumnWidth'+inttostr(i),TV.Header.Columns[i].Width);
+ finally
+  ini.Free;
+ end;
+
+end;
+
+procedure TfmViewLog.FormDestroy(Sender: TObject);
+begin
+ SaveIniParams;
+end;
+
+end.

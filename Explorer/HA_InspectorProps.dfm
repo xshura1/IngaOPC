@@ -1,0 +1,51 @@
+object fmInspectorProps: TfmInspectorProps
+  Left = 715
+  Top = 510
+  Width = 361
+  Height = 252
+  BorderStyle = bsSizeToolWin
+  Caption = #1057#1074#1086#1081#1089#1090#1074#1072' '#1090#1101#1075#1072
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  FormStyle = fsStayOnTop
+  OldCreateOrder = False
+  OnCreate = FormCreate
+  PixelsPerInch = 96
+  TextHeight = 13
+  object Panel4: TPanel
+    Left = 0
+    Top = 0
+    Width = 353
+    Height = 225
+    Align = alClient
+    BevelOuter = bvLowered
+    TabOrder = 0
+    object OIProps: TGsvObjectInspectorGrid
+      Left = 1
+      Top = 1
+      Width = 351
+      Height = 223
+      Align = alClient
+      ParentFont = False
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clBtnText
+      Font.Height = -11
+      Font.Name = 'MS Sans Serif'
+      Font.Style = []
+      TabOrder = 0
+      ReadOnly = False
+      Color = clWhite
+      ParentColor = False
+      BorderStyle = bsNone
+      RowHeight = 18
+      DividerPosition = 175
+      TypeVisibleProps = vp_Props
+      ColorReadOnlyProp = clBlack
+      OnEnumProperties = OIPropsEnumProperties
+    end
+  end
+end

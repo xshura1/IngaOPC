@@ -1,0 +1,153 @@
+unit MainWizard;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons;
+
+type
+  TfmWizard = class(TForm)
+    EDir: TEdit;
+    BtnOpenDir: TSpeedButton;
+    Button1: TButton;
+    OD: TOpenDialog;
+    Label1: TLabel;
+    procedure BtnOpenDirClick(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+  private
+    { Private declarations }
+    function CreatePrj(FolderName:string):boolean;
+  public
+    { Public declarations }
+  end;
+
+var
+  fmWizard: TfmWizard;
+
+implementation
+  uses ShlObj;
+{$R *.dfm}
+
+function BrowseFolderDlg: Boolean;
+var
+  BrowseInfo: TBrowseInfo;
+  ItemIDList: PItemIDList;
+  Temp: array[0..MAX_PATH] of Char;
+  fDisplayName:string;
+begin
+//  if FDesktopRoot and (FBrowseKind = bfFolders) then
+    BrowseInfo.pidlRoot := nil;
+//  else begin
+//    if FBrowseKind = bfComputers then { root - Network }
+//      OleCheck(SHGetSpecialFolderLocation(0, CSIDL_NETWORK,
+//       BrowseInfo.pidlRoot))
+//    else { root - MyComputer }
+//      OleCheck(SHGetSpecialFolderLocation(0, CSIDL_DRIVES,
+//        BrowseInfo.pidlRoot));
+//  end;
+  try
+    SetLength(fDisplayName, MAX_PATH);
+    with BrowseInfo do begin
+      pszDisplayName := PChar(fDisplayName);
+     // if DialogText <> '' then lpszTitle := PChar(DialogText)
+     // else lpszTitle := nil;
+    //  if FBrowseKind = bfComputers then
+    //    ulFlags := BIF_BROWSEFORCOMPUTER
+    //  else
+        ulFlags := BIF_RETURNONLYFSDIRS or BIF_RETURNFSANCESTORS;
+    //  lpfn := ExplorerHook;
+      lParam := Longint(fmWizard);
+      hWndOwner := Application.Handle;
+      iImage := 0;
+    end;
+
+    SHBrowseForFolder(BrowseInfo);
+    {
+    ItemIDList := TaskModalDialog(BrowseInfo);
+    Result := ItemIDList <> nil;
+    if Result then
+    try
+      if FBrowseKind = bfFolders then begin
+        Win32Check(SHGetPathFromIDList(ItemIDList, Temp));
+        FFolderName := RemoveBackSlash(StrPas(Temp));
+      end
+      else begin
+        FFolderName := DisplayName;
+      end;
+      FSelectedName := FFolderName;
+      FImageIndex := BrowseInfo.iImage;
+    finally
+      CoTaskMemFree(ItemIDList);
+    end;}
+  finally
+  //  if BrowseInfo.pidlRoot <> nil then CoTaskMemFree(BrowseInfo.pidlRoot);
+  end;
+end;
+
+
+function CopyFile( InFile,OutFile: String): Longint;
+var  InFS,OutFS: TFileStream;
+begin
+ InFS  := TFileStream.Create( InFile,  fmOpenRead );
+ OutFS := TFileStream.Create( OutFile, fmCreate   );
+ try
+  InFS.Position:=0;
+  Result := OutFS.CopyFrom( InFS, InFs.Size);
+ finally
+  InFS.Free;
+  OutFS.Free;
+ end;
+end;
+
+
+procedure TfmWizard.BtnOpenDirClick(Sender: TObject);
+begin
+// BrowseFolderDlg;
+ if od.Execute then
+  EDir.Text:=od.FileName;
+end;
+
+procedure TfmWizard.Button1Click(Sender: TObject);
+begin
+ CreatePrj(EDir.Text);
+end;
+
+function TfmWizard.CreatePrj(FolderName: string):boolean;
+var fs:TStringList;
+    TemplDir,NamePrj,sbuff:string;
+    b:byte;
+    i:integer;
+begin
+ result:=true;
+ if not DirectoryExists(FolderName) then
+  result:=CreateDir(FolderName);
+ if not result then exit;
+ NamePrj:='';
+ for i:=length(FolderName) downto 1 do
+  if FolderName[i]<>'\' then
+   NamePrj:=FolderName[i]+NamePrj
+  else
+   break;
+ result:=NamePrj<>'';
+ if not result then exit;
+
+ TemplDir:=ExtractFileDir(ParamStr(0));
+ TemplDir:=TemplDir+'\Templates';
+ sbuff:='library '+NamePrj+';';
+
+ fs:=TStringList.Create;
+ try
+  fs.LoadFromFile(TemplDir+'\PrjTemplate.dpr');
+  fs.Insert(0,sbuff);
+  fs.SaveToFile(FolderName+'\'+NamePrj+'.dpr');
+ finally
+  fs.Free;
+ end;
+ copyfile(TemplDir+'\UDialog.dfm',FolderName+'\UDialog.dfm');
+ copyfile(TemplDir+'\UDialog.pas',FolderName+'\UDialog.pas');
+ copyfile(TemplDir+'\Intf.pas',FolderName+'\Intf.pas');
+ copyfile(TemplDir+'\Main.pas',FolderName+'\Main.pas');
+end;
+
+end.

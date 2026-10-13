@@ -1,0 +1,414 @@
+<html xmlns:v="urn:schemas-microsoft-com:vml"
+xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns="http://www.w3.org/TR/REC-html40">
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1251">
+<meta name=ProgId content=Word.Document>
+<meta name=Generator content="Microsoft Word 11">
+<meta name=Originator content="Microsoft Word 11">
+<link rel=File-List href="Принцип%20работы.files/filelist.xml">
+<link rel=Edit-Time-Data href="Принцип%20работы.files/editdata.mso">
+<link rel=OLE-Object-Data href="Принцип%20работы.files/oledata.mso">
+<!--[if !mso]>
+<style>
+v\:* {behavior:url(#default#VML);}
+o\:* {behavior:url(#default#VML);}
+w\:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+</style>
+<![endif]-->
+<title>Принцип работы IngaOPC сервера</title>
+<!--[if gte mso 9]><xml>
+ <w:WordDocument>
+  <w:View>Print</w:View>
+  <w:Zoom>150</w:Zoom>
+  <w:ValidateAgainstSchemas/>
+  <w:SaveIfXMLInvalid>false</w:SaveIfXMLInvalid>
+  <w:IgnoreMixedContent>false</w:IgnoreMixedContent>
+  <w:AlwaysShowPlaceholderText>false</w:AlwaysShowPlaceholderText>
+  <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
+ </w:WordDocument>
+</xml><![endif]--><!--[if gte mso 9]><xml>
+ <w:LatentStyles DefLockedState="false" LatentStyleCount="156">
+ </w:LatentStyles>
+</xml><![endif]-->
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;
+	mso-font-charset:2;
+	mso-generic-font-family:auto;
+	mso-font-pitch:variable;
+	mso-font-signature:0 268435456 0 0 -2147483648 0;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{mso-style-parent:"";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;
+	text-underline:single;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;
+	text-underline:single;}
+@page Section1
+	{size:595.3pt 841.9pt;
+	margin:2.0cm 42.5pt 2.0cm 45.0pt;
+	mso-header-margin:35.4pt;
+	mso-footer-margin:35.4pt;
+	mso-paper-source:0;}
+div.Section1
+	{page:Section1;}
+ /* List Definitions */
+ @list l0
+	{mso-list-id:702944267;
+	mso-list-type:hybrid;
+	mso-list-template-ids:1578411612 68747269 68747267 68747269 68747265 68747267 68747269 68747265 68747267 68747269;}
+@list l0:level1
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:81.0pt;
+	mso-level-number-position:left;
+	margin-left:81.0pt;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+@list l0:level2
+	{mso-level-tab-stop:72.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l0:level3
+	{mso-level-tab-stop:108.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l0:level4
+	{mso-level-tab-stop:144.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l0:level5
+	{mso-level-tab-stop:180.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l0:level6
+	{mso-level-tab-stop:216.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l0:level7
+	{mso-level-tab-stop:252.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l0:level8
+	{mso-level-tab-stop:288.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l0:level9
+	{mso-level-tab-stop:324.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l1
+	{mso-list-id:1456287295;
+	mso-list-type:hybrid;
+	mso-list-template-ids:-361876096 68747269 68747267 68747269 68747265 68747267 68747269 68747265 68747267 68747269;}
+@list l1:level1
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:107.95pt;
+	mso-level-number-position:left;
+	margin-left:107.95pt;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+@list l1:level2
+	{mso-level-tab-stop:72.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l1:level3
+	{mso-level-tab-stop:108.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l1:level4
+	{mso-level-tab-stop:144.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l1:level5
+	{mso-level-tab-stop:180.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l1:level6
+	{mso-level-tab-stop:216.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l1:level7
+	{mso-level-tab-stop:252.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l1:level8
+	{mso-level-tab-stop:288.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l1:level9
+	{mso-level-tab-stop:324.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l2
+	{mso-list-id:1619216160;
+	mso-list-type:hybrid;
+	mso-list-template-ids:-1050666126 68747269 68747267 68747269 68747265 68747267 68747269 68747265 68747267 68747269;}
+@list l2:level1
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:63.0pt;
+	mso-level-number-position:left;
+	margin-left:63.0pt;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+@list l2:level2
+	{mso-level-tab-stop:72.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l2:level3
+	{mso-level-tab-stop:108.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l2:level4
+	{mso-level-tab-stop:144.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l2:level5
+	{mso-level-tab-stop:180.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l2:level6
+	{mso-level-tab-stop:216.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l2:level7
+	{mso-level-tab-stop:252.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l2:level8
+	{mso-level-tab-stop:288.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+@list l2:level9
+	{mso-level-tab-stop:324.0pt;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;}
+ol
+	{margin-bottom:0cm;}
+ul
+	{margin-bottom:0cm;}
+-->
+</style>
+<!--[if gte mso 10]>
+<style>
+ /* Style Definitions */
+ table.MsoNormalTable
+	{mso-style-name:"Обычная таблица";
+	mso-tstyle-rowband-size:0;
+	mso-tstyle-colband-size:0;
+	mso-style-noshow:yes;
+	mso-style-parent:"";
+	mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
+	mso-para-margin:0cm;
+	mso-para-margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:10.0pt;
+	font-family:"Times New Roman";
+	mso-ansi-language:#0400;
+	mso-fareast-language:#0400;
+	mso-bidi-language:#0400;}
+</style>
+<![endif]--><!--[if gte mso 9]><xml>
+ <o:shapedefaults v:ext="edit" spidmax="3074"/>
+</xml><![endif]--><!--[if gte mso 9]><xml>
+ <o:shapelayout v:ext="edit">
+  <o:idmap v:ext="edit" data="1"/>
+ </o:shapelayout></xml><![endif]-->
+</head>
+
+<body lang=RU link=blue vlink=purple style='tab-interval:35.4pt'>
+
+<div class=Section1>
+
+<p class=MsoNormal align=center style='text-align:center;line-height:150%'><b>Принцип
+работы </b><b><span lang=EN-US style='mso-ansi-language:EN-US'>IngaOPC</span><span
+lang=EN-US> </span>сервера.</b></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:27.0pt;line-height:
+150%'>Внутренняя структура сервера представлена на рисунке:</p>
+
+<p class=MsoNormal align=center style='text-align:center;line-height:150%'><!--[if gte vml 1]><v:shapetype
+ id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t"
+ path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f">
+ <v:stroke joinstyle="miter"/>
+ <v:formulas>
+  <v:f eqn="if lineDrawn pixelLineWidth 0"/>
+  <v:f eqn="sum @0 1 0"/>
+  <v:f eqn="sum 0 0 @1"/>
+  <v:f eqn="prod @2 1 2"/>
+  <v:f eqn="prod @3 21600 pixelWidth"/>
+  <v:f eqn="prod @3 21600 pixelHeight"/>
+  <v:f eqn="sum @0 0 1"/>
+  <v:f eqn="prod @6 1 2"/>
+  <v:f eqn="prod @7 21600 pixelWidth"/>
+  <v:f eqn="sum @8 21600 0"/>
+  <v:f eqn="prod @7 21600 pixelHeight"/>
+  <v:f eqn="sum @10 21600 0"/>
+ </v:formulas>
+ <v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/>
+ <o:lock v:ext="edit" aspectratio="t"/>
+</v:shapetype><v:shape id="_x0000_i1025" type="#_x0000_t75" style='width:483.75pt;
+ height:182.25pt' o:ole="">
+ <v:imagedata src="Принцип%20работы.files/image001.wmz" o:title=""/>
+</v:shape><![endif]--><![if !vml]><img width=645 height=243
+src="Принцип%20работы.files/image002.gif" v:shapes="_x0000_i1025"><![endif]><!--[if gte mso 9]><xml>
+ <o:OLEObject Type="Embed" ProgID="Visio.Drawing.3" ShapeID="_x0000_i1025"
+  DrawAspect="Content" ObjectID="_1227534297">
+ </o:OLEObject>
+</xml><![endif]--></p>
+
+<p class=MsoNormal align=center style='text-align:center;text-indent:27.0pt;
+line-height:150%'>Рис.1. Внутренняя структура сервера.</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:27.0pt;line-height:
+150%'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:27.0pt;line-height:
+150%'>Сервер состоит из четырех логических модулей:</p>
+
+<p class=MsoNormal style='margin-left:81.0pt;text-align:justify;text-indent:
+-18.0pt;line-height:150%;mso-list:l0 level1 lfo2;tab-stops:list 81.0pt'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>§<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]><b><span lang=EN-US style='mso-ansi-language:
+EN-US'>OPC</span><span lang=EN-US> </span></b><b><span lang=EN-US
+style='mso-ansi-language:EN-US'>DA</span> интерфейс</b> – реализует всю
+функциональность <span lang=EN-US style='mso-ansi-language:EN-US'>OPC</span><span
+lang=EN-US> </span><span lang=EN-US style='mso-ansi-language:EN-US'>DA</span><span
+lang=EN-US> </span>стандарта;</p>
+
+<p class=MsoNormal style='margin-left:81.0pt;text-align:justify;text-indent:
+-18.0pt;line-height:150%;mso-list:l0 level1 lfo2;tab-stops:list 81.0pt'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>§<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]><b>Конфигурация</b> – дерево устройств,
+доступных для <span lang=EN-US style='mso-ansi-language:EN-US'>OPC</span><span
+lang=EN-US> </span>клиентов. Конфигурация создается в <a
+href="Редактор%20конфигурации.htm">редакторе конфигурации</a>;</p>
+
+<p class=MsoNormal style='margin-left:81.0pt;text-align:justify;text-indent:
+-18.0pt;line-height:150%;mso-list:l0 level1 lfo2;tab-stops:list 81.0pt'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>§<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]><b>Шаблоны</b> – совокупность доступных тэгов и
+команд, которые поддерживает устройство, и скрипта, который формирует пакеты
+данных для <a href="Драйвер.htm">драйвера устройства</a>. Шаблон создается в <a
+href="Редактор%20шаблонов.htm">редакторе шаблонов</a>;</p>
+
+<p class=MsoNormal style='margin-left:81.0pt;text-align:justify;text-indent:
+-18.0pt;line-height:150%;mso-list:l0 level1 lfo2;tab-stops:list 81.0pt'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>§<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]><b>Логика опроса</b> – модуль реализует очереди
+опроса для драйверов, а так же прием данных от них;</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:27.0pt;line-height:
+150%'><o:p>&nbsp;</o:p></p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:27.0pt;line-height:
+150%'>Сервер предоставляет адресное пространство тэгов <span lang=EN-US
+style='mso-ansi-language:EN-US'>OPC</span><span lang=EN-US> </span>клиентам.
+Адресное пространство формируется из файла конфигурации и шаблонов устройств.
+Клиенты создают на сервере группы, добавляют в них интересующие их тэги, после
+этого, сервер, при помощи скриптов в шаблонах, формирует пакеты данных, которые
+по внутреннему протоколу передаются в драйвер. Драйвер преобразует этот пакет в
+физический пакет данных, понятный конечному устройству и отправляет его в
+устройство по какому- либо каналу связи. После приема ответа от устройства,
+драйвер вновь преобразует уже физический пакет данных в пакет, понятный
+серверу. Далее этот пакет передается скриптам шаблонов, где он преобразуется
+уже в значения тэгов которые, в свою очередь, видит <span lang=EN-US
+style='mso-ansi-language:EN-US'>OPC</span><span lang=EN-US> </span>клиент.</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:27.0pt;line-height:
+150%'>Пакет данных от сервера в драйвер и наоборот содержит три основных поля:</p>
+
+<p class=MsoNormal style='margin-left:107.95pt;text-align:justify;text-indent:
+-18.0pt;line-height:150%;mso-list:l1 level1 lfo4;tab-stops:list 107.95pt'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>§<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]>Адрес устройства (строка);</p>
+
+<p class=MsoNormal style='margin-left:107.95pt;text-align:justify;text-indent:
+-18.0pt;line-height:150%;mso-list:l1 level1 lfo4;tab-stops:list 107.95pt'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>§<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]>Номер команды (строка);</p>
+
+<p class=MsoNormal style='margin-left:107.95pt;text-align:justify;text-indent:
+-18.0pt;line-height:150%;mso-list:l1 level1 lfo4;tab-stops:list 107.95pt'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>§<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]>Данные (массив байт);</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:27.0pt;line-height:
+150%'>Эти поля заполняются сервером после выполнения скриптов.</p>
+
+<p class=MsoNormal style='text-align:justify;text-indent:27.0pt;line-height:
+150%'>Такая схема работы, дает следующие преимущества:</p>
+
+<p class=MsoNormal style='margin-left:63.0pt;text-align:justify;text-indent:
+-18.0pt;line-height:150%;mso-list:l2 level1 lfo6;tab-stops:list 63.0pt'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>§<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]>пользователь не сталкивается с такими
+трудностями, как синхронизация потоков, формирование адресного пространства,
+изучением <span lang=EN-US style='mso-ansi-language:EN-US'>COM</span><span
+lang=EN-US> </span>технологии;</p>
+
+<p class=MsoNormal style='margin-left:63.0pt;text-align:justify;text-indent:
+-18.0pt;line-height:150%;mso-list:l2 level1 lfo6;tab-stops:list 63.0pt'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>§<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]>простота написания драйвера для обмена с
+устройством т.к. в драйвере нужно написать лишь транспорт для передачи данных;</p>
+
+<p class=MsoNormal style='margin-left:63.0pt;text-align:justify;text-indent:
+-18.0pt;line-height:150%;mso-list:l2 level1 lfo6;tab-stops:list 63.0pt'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>§<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]>если необходимо работать с однотипными
+устройствами (например, квартирная сигнализация, лифтовое хозяйство и т.д.), то
+написав один раз шаблон и драйвер для устройства, можно быстро ввести в работу
+другие такие же устройства;</p>
+
+<p class=MsoNormal style='margin-left:63.0pt;text-align:justify;text-indent:
+-18.0pt;line-height:150%;mso-list:l2 level1 lfo6;tab-stops:list 63.0pt'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>§<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]>если появиться необходимость изменить канал
+передачи данных на устройство, то нужно написать лишь новый драйвер для этого
+канала связи, а шаблон остается неизменным;</p>
+
+<p class=MsoNormal style='margin-left:63.0pt;text-align:justify;text-indent:
+-18.0pt;line-height:150%;mso-list:l2 level1 lfo6;tab-stops:list 63.0pt'><![if !supportLists]><span
+style='font-family:Wingdings;mso-fareast-font-family:Wingdings;mso-bidi-font-family:
+Wingdings'><span style='mso-list:Ignore'>§<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]>так же, если написан драйвер для какого либо
+стандартного протокола обмена (<span lang=EN-US style='mso-ansi-language:EN-US'>Modbus</span>),
+то для ввода устройств, которые работают по этому протоколу, нужно написать
+лишь шаблон;</p>
+
+</div>
+
+</body>
+
+</html>

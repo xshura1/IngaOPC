@@ -1,0 +1,73 @@
+object fmEditArrayValue: TfmEditArrayValue
+  Left = 924
+  Top = 539
+  Width = 356
+  Height = 237
+  BorderStyle = bsSizeToolWin
+  Caption = #1047#1085#1072#1095#1077#1085#1080#1077
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  OldCreateOrder = False
+  Position = poScreenCenter
+  OnClose = FormClose
+  PixelsPerInch = 96
+  TextHeight = 13
+  object Panel1: TPanel
+    Left = 0
+    Top = 180
+    Width = 348
+    Height = 30
+    Align = alBottom
+    BevelOuter = bvNone
+    TabOrder = 1
+    object Panel2: TPanel
+      Left = 178
+      Top = 0
+      Width = 170
+      Height = 30
+      Align = alRight
+      BevelOuter = bvNone
+      TabOrder = 0
+      object BtnCancel: TButton
+        Left = 89
+        Top = 5
+        Width = 75
+        Height = 23
+        Caption = #1054#1090#1084#1077#1085#1072
+        ModalResult = 2
+        TabOrder = 1
+      end
+      object BtnOK: TButton
+        Left = 2
+        Top = 5
+        Width = 75
+        Height = 23
+        Caption = #1054#1050
+        ModalResult = 1
+        TabOrder = 0
+      end
+    end
+  end
+  object Panel3: TPanel
+    Left = 0
+    Top = 0
+    Width = 348
+    Height = 180
+    Align = alClient
+    BevelOuter = bvLowered
+    TabOrder = 0
+    object RE: TRichEdit
+      Left = 1
+      Top = 1
+      Width = 346
+      Height = 178
+      Align = alClient
+      BorderStyle = bsNone
+      TabOrder = 0
+    end
+  end
+end

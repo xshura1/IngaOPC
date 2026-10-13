@@ -1,0 +1,130 @@
+unit CTTMain;
+
+interface
+ uses SysUtils,Windows,ActiveX,Classes,Intf,comobj;
+ type
+
+  TCTTDriver=class(TObject)
+   private
+    fTag_vt_i2    :Smallint;
+    fTag_vt_i4    :Integer;
+    fTag_vt_r4    :Single;
+    fTag_vt_r8    :Double;
+    fTag_vt_cy    :Currency;
+    fTag_vt_date  :TDateTime;
+    fTag_vt_bstr  :WideString;
+    fTag_vt_bool  :Bool;
+    fTag_vt_i1    :ShortInt;
+    fTag_vt_ui1   :Byte;
+    fTag_vt_ui2   :Word;
+    fTag_vt_ui4   :DWord;
+
+    fListResult   :TList;
+
+    procedure ClearListResult;
+   public
+    constructor Create;
+    destructor Destroy; override;
+
+    function Write(ppDriverData:pDriverData):HResult;
+    function Read(out ppDriverData:pDriverData):HResult;
+  end;
+ var CTTD:TCTTDriver;
+implementation
+
+{ TCTTDriver }
+
+procedure TCTTDriver.ClearListResult;
+begin
+ fListResult.Clear;
+end;
+
+constructor TCTTDriver.Create;
+begin
+ inherited;
+ fListResult:=TList.Create;
+end;
+
+destructor TCTTDriver.Destroy;
+begin
+ ClearListResult;
+ inherited;
+end;
+
+function TCTTDriver.Read(out ppDriverData: pDriverData): HResult;
+begin
+ {ppDriverData:=nil;
+
+ fTag_vt_i2:=fTag_vt_i2+1;
+ ppDriverData:=CoTaskMemAlloc(sizeof(DriverData));
+ if ppDriverData=nil then exit;
+// fillchar(ppDriverData^,sizeof(DriverData),0);
+ ppDriverData^.Handle:=0;
+ ppDriverData^.szAddress:=StringToLPOleStr('1');
+ ppDriverData^.szNoCommand:=StringToLPOleStr(inttostr(2));
+ ppDriverData^.dwDataSize:=2;
+ ppDriverData^.pData:=coTaskMemAlloc(ppDriverData^.dwDataSize);
+ ppDriverData^.pData[0]:=loByte(fTag_vt_i2);
+ ppDriverData^.pData[1]:=HiByte(fTag_vt_i2);
+ ppDriverData^.Result:=s_ok;
+ result:=s_ok;
+ }
+
+ ppDriverData:=nil;
+ result:=s_false;
+ if fListResult.Count=0 then exit;
+ ppDriverData:=fListResult[0];
+ result:=s_ok;
+ fListResult.Delete(0);
+end;
+
+function TCTTDriver.Write(ppDriverData: pDriverData): HResult;
+var No:byte;
+    addr:string;
+    ppResult:pDriverData;
+begin
+ result:=s_ok;
+ try
+  No:=strtoint(ppDriverData.szNoCommand);
+  addr:=string(ppDriverData.szAddress);
+  case No of
+   1: begin
+       fTag_vt_i2:=makeword(ppDriverData.pData[0],ppDriverData.pData[1]);
+       ppResult:=CoTaskMemAlloc(sizeof(DriverData));
+       if ppResult=nil then exit;
+       fillchar(ppResult^,sizeof(ppResult),0);
+       ppResult^.Handle:=ppDriverData.Handle;
+       ppResult^.szAddress:=StringToLPOleStr(addr);
+       ppResult^.szNoCommand:=StringToLPOleStr(inttostr(no));
+       ppResult^.dwDataSize:=0;
+       ppResult^.pData:=nil;
+       ppResult^.Result:=s_ok;
+       fListResult.Add(ppResult);
+      end;
+   2: begin
+       ppResult:=CoTaskMemAlloc(sizeof(DriverData));
+       if ppResult=nil then exit;
+       fillchar(ppResult^,sizeof(ppResult),0);
+       ppResult^.Handle:=ppDriverData.Handle;
+       ppResult^.szAddress:=StringToLPOleStr(addr);
+       ppResult^.szNoCommand:=StringToLPOleStr(inttostr(no));
+       ppResult^.dwDataSize:=2;
+       ppResult^.pData:=coTaskMemAlloc(ppResult^.dwDataSize);
+       ppResult^.pData[0]:=loByte(fTag_vt_i2);
+       ppResult^.pData[1]:=HiByte(fTag_vt_i2);
+
+       ppResult^.Result:=s_ok;
+       fListResult.Add(ppResult);
+
+      end;
+  end;
+ except
+ end;
+ 
+end;
+
+initialization
+ CTTD:=TCTTDriver.Create;
+finalization
+ CTTD.Free;
+end.

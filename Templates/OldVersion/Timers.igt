@@ -1,0 +1,8 @@
+<Header FileDescription="IngaOPC Template File" Version="0101" Checked="-1" Script="procedure &lt;Timer/&gt;OnTimer(Device:TIGDevice; Timer:TIGTimer);
+begin
+
+end;
+
+begin
+
+end."><T10 OID="1" Name="Template" DateCreate="12.02.2007 16:23:22" DateLastUpdate="12.02.2007 16:49:54" CompileID="2"><T20 OID="2" Name="Tags"/><T25 OID="3" Name="Properties"/><T30 OID="4" Name="Commands"/><T38 OID="5" Name="Timers"><T138 OID="6" Name="Timer" Enabled="True" Interval="487" OnTimer="&lt;Timer/&gt;OnTimer"/></T38></T10></Header>

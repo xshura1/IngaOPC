@@ -1,0 +1,12 @@
+[Others]
+TopLine=1
+CursorLine=13
+CursorCol=51
+[Breakpoints]
+BP0=44
+BP1=4
+[Vars]
+V0=s
+V1=["Tag"]
+V2=Tags
+V3=Device

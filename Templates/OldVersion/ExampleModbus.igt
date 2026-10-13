@@ -1,0 +1,110 @@
+<Header FileDescription="IngaOPC Template File" Version="0101" Checked="-1" Script=" procedure OnAfterRead(Device:TIGDevice;
+                       Command:TIGCommand;
+                       DriverData:TIGDriverData);
+ var i:integer;
+     na:word;
+ begin
+  // параметр Command содержит пакет данных отосланный в драйвер 
+  // параметр DriverData содержит данные принятые от устройства
+ 
+      // т.к. по принятому пакету нельзя определить
+      // для какого регистра пришли данные,извлекаем
+      // его из данных на которые пришел пакет
+  
+   na:=(Command[0]*256)+Command[1];
+   
+      // ищем тэг у которого адрес регистра равен na
+   for i:=0 to Device.Tags.Count-1 do
+    if Device.Tags[i].PropExists(5000) then
+     if Device.Tags[i].Prop[5000].value=na then
+      begin
+        // в зависимости от значения DriverData.result
+        // присваиваем новое значение тэгу или изменяем его качество
+        if DriverData.result=0 then
+          Device.Tags[i].NewValue:=(DriverData[1]*256)+DriverData[2]
+        else
+          Device.Tags[i].NewQuality:=OPC_QUALITY_BAD;
+        break;    
+      end;
+ end;
+
+
+
+ procedure OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+ var i:integer;
+     wr:word;
+ begin
+  // в параметре процедуры Tags содержится массив тэгов,
+  // для которых в данный момент необходимо считать значения
+ 
+   for i:=0 to Tags.Count-1 do
+    //отбрасываем тэги, у которых нет доп. свойства с индексом 5000
+    if Tags[i].PropExists(5000) then	
+     begin
+        // задаем длину массива данных для отправки в драйвер,
+        // длину массива можно задать в инспекторе объектов,
+        // поменяв поле &quot;Кол-во байт на запись&quot;
+      [&quot;Команда на чтение&quot;].count:=4;
+
+     // [&quot;Команда на чтение&quot;].Priority:=200;
+
+      wr:=Tags[i].Prop[5000].Value; 
+        // по протоколу Modbus заполняем массив данных
+        // начальный адрес регистра                              
+      [&quot;Команда на чтение&quot;][0]:=byte(wr shr 8);
+      [&quot;Команда на чтение&quot;][1]:=byte(wr);
+        // кол-во регистров
+      [&quot;Команда на чтение&quot;][2]:=0;
+      [&quot;Команда на чтение&quot;][3]:=1;
+        // посылаем сформированный пакет в очередь для отправки в драйвер
+      [&quot;Команда на чтение&quot;].Run;
+     end;
+  end;
+
+
+
+
+ procedure OnWrite(Device:TIGDevice; Tags:TIGTags);
+ var i:integer;
+     wr,val:word;
+ begin
+    // в параметре Tags содержится массив тэгов,
+    // значения которых необходимо записать в устройство
+    for i:=0 to Tags.Count-1 do
+     if Tags[i].PropExists(5000) then	
+      begin
+        // задаем длину массива данных для отправки в драйвер,
+        // длину массива можно задать в инспекторе объектов,
+        // поменяв поле &quot;Кол-во байт на запись&quot;
+       [&quot;Команда на запись&quot;].count:=4;
+
+       wr:=Tags[i].Prop[5000].Value;
+       val:=Tags[i].VQT.Value; 
+        // по протоколу Modbus заполняем массив данных
+        // начальный адрес регистра                              
+       [&quot;Команда на запись&quot;][0]:=byte(wr shr 8);
+       [&quot;Команда на запись&quot;][1]:=byte(wr);
+         // значение
+       [&quot;Команда на запись&quot;][2]:=byte(val shr 8);;
+       [&quot;Команда на запись&quot;][3]:=byte(val);
+       [&quot;Команда на запись&quot;].Priority:=200;
+         // посылаем сформированный пакет в очередь
+         // для отправки в драйвер
+       [&quot;Команда на запись&quot;].Run;
+     end;
+ end;
+
+procedure &lt;Template/&gt;OnActivateDevice(Device:TIGDevice);
+begin
+  [&quot;Минимальное напряжение&quot;].NewValue:=Device.Param;
+  [&quot;Команда инициализации&quot;].count:=2;
+  [&quot;Команда инициализации&quot;][0]:=3;
+  [&quot;Команда инициализации&quot;][1]:=4;
+  [&quot;Команда инициализации&quot;].run;
+  
+ 
+end;
+
+begin
+
+end."><T10 OID="1" Name="Template" DateCreate="20.06.2006 10:15:53" DateLastUpdate="10.02.2007 13:44:13" CompileID="99" Description="шаблон для Modbus" OnActivateDevice="&lt;Template/&gt;OnActivateDevice"><T20 OID="2" Name="Tags"><T120 OID="22" Name="Минимальное напряжение" DataType="18" Readable="True" Writeable="True" OnRead="OnRead" OnWrite="OnWrite"><T145 OID="24" OIDLink="12" Value="03001200000002000000"/></T120><T120 OID="7" Name="Напряжение" DataType="18" Readable="True" Writeable="False" OnRead="OnRead" OnWrite="" Saved="False"><T145 OID="15" OIDLink="12" Value="03001400000002000000"/></T120><T120 OID="20" Name="Сила тока" DataType="18" Readable="True" Writeable="False" OnRead="OnRead" OnWrite=""><T145 OID="21" OIDLink="12" Value="03001500000002000000"/></T120></T20><T25 OID="3" Name="Properties"><T125 OID="12" Name="Адрес регистра" DataType="18" PropID="5000" UniqueValue="True"/></T25><T30 OID="4" Name="Commands"><T130 OID="23" Name="Команда на запись" NoCommand="6" CountWriteBytes="4" Param="0" OnBeforeWrite="" OnAfterRead=""/><T130 OID="19" Name="Команда на чтение" NoCommand="3" CountWriteBytes="0" CountReadBytes="0" OnBeforeWrite="" OnAfterRead="OnAfterRead"/><T130 OID="25" Name="Команда инициализации" NoCommand="100" CountWriteBytes="0" Param="0" OnBeforeWrite="" OnAfterRead=""/></T30></T10></Header>

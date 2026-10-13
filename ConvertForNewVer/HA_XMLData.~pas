@@ -1,0 +1,311 @@
+unit HA_XMLData;
+
+interface
+ uses MSXML_TLB, Windows, Messages, SysUtils, Variants, Classes,HA_Types,VirtualTrees;
+
+ const
+  CountDTags=24;
+  TemplatesDir ='Templates';
+  ConfigsDir   ='Configs';
+  ExtTemplate  ='.igt';   //igt
+  DescriptionTemplate  ='IngaOPC Template File';
+  ExtConfig    ='.igc';   //igc
+  DescriptionConfig    ='IngaOPC Config File';
+  ExtStoredTags='.igs';   //igs
+  DescriptionStoredTags='IngaOPC Stored Tags File';
+  ExtDebugInfo ='.igd';   //igd
+  DescriptionDebugInfo ='IngaOPC Debug Info File';
+
+ type
+  TExplorerMode=(em_Templates,em_Controllers);
+
+
+  THAData=class(TObject)
+   private
+    fGenID    : integer;
+    fBaseDir  : string;
+
+
+
+   public
+    constructor Create(BaseDir:string);
+    destructor Destroy; override;
+    property BaseDir:string read fBaseDir;
+
+    function GenID:integer;
+    procedure ResetGenID;
+
+    procedure GetAllTemplates(st:TStrings);
+    procedure GetAllConfigs(st:TStrings);
+
+
+
+
+    function Load(ExplorerMode:TExplorerMode; FileNameS,FileNameD:string):boolean;
+    function Save(ExplorerMode:TExplorerMode; FileName:string; TV:TBaseVirtualTree; const Script:string; const Checked:boolean):boolean;
+  end;
+
+
+ var XData:THAData;
+implementation
+ uses ActiveX;
+
+
+{ THAData }
+
+function StrToClassID(Str:string):integer;
+var s:string;
+begin
+ result:=-1;
+ s:=str;
+ if Pos('T',s)<>1 then exit;
+ delete(s,1,1);
+ result:=strtoint(s);
+end;
+
+function ClassIDToStr(ClassID:integer):string;
+begin
+ result:='T'+inttostr(ClassID);
+end;
+
+constructor THAData.Create(BaseDir:string);
+begin
+ inherited Create;
+ fBaseDir:=BaseDir;
+
+
+end;
+
+destructor THAData.Destroy;
+begin
+ inherited;
+end;
+
+function THAData.GenID: integer;
+begin
+ inc(fGenID);
+ result:=fGenID;
+end;
+
+
+
+
+procedure THAData.GetAllConfigs(st: TStrings);
+var sr: TSearchRec;
+begin
+ st.Clear;
+ if FindFirst(fBaseDir+ConfigsDir+'\*'+ExtConfig,faAnyFile,sr)=0 then
+  begin
+    st.Add(ChangeFileExt(sr.Name,''));
+    while FindNext(sr)=0 do
+     st.Add(ChangeFileExt(sr.Name,''));
+  end;
+  FindClose(sr);
+end;
+
+procedure THAData.GetAllTemplates(st: TStrings);
+var sr: TSearchRec;
+begin
+ st.Clear;
+if FindFirst(fBaseDir+TemplatesDir+'\*'+ExtTemplate,faAnyFile,sr)=0 then
+  begin
+    st.Add(ChangeFileExt(sr.Name,''));
+    while FindNext(sr)=0 do
+     st.Add(ChangeFileExt(sr.Name,''));
+
+  end;
+  FindClose(sr);
+end;
+
+
+
+function THAData.Load(ExplorerMode:TExplorerMode; FileNameS,FileNameD: string): boolean;
+
+
+procedure LoadFromTree_(ns: IXMLDOMNode; nd:IXMLDOMElement);
+var i,OldClassID,NewClassID:integer;
+    s:string;
+begin
+ if StrToClassID(ns.nodeName)=OldClassFolderEvents then exit;
+
+ s:=ns.nodeName;
+
+ OldClassID:=StrToClassID(s);
+ case OldClassID of
+  OldClassTemplate        :NewClassID:=ClassTypeTemplate;
+  OldClassFolderTags      :NewClassID:=ClassFolderTagsDA;
+  OldClassFolderProps     :NewClassID:=ClassFolderPropsDA;
+  OldClassFolderCommands  :NewClassID:=ClassFolderCommandsDA;
+  OldClassFolderTimers    :NewClassID:=ClassFolderTimersDA;
+
+  //reserved up 50
+  OldClassFolder          :NewClassID:=ClassFolderDA;
+
+
+  OldClassTag      :NewClassID:=ClassTagDA;
+  OldClassProp     :NewClassID:=ClassPropDA;
+  OldClassCommand  :NewClassID:=ClassCommandDA;
+  OldClassTimer    :NewClassID:=ClassTimerDA;
+
+  OldClassController   :NewClassID:=ClassDeviceConfig;
+  OldClassLinkProp     :NewClassID:=ClassLinkPropDA;
+ end;
+
+ for i:=0 to ns.childNodes.length-1 do
+  LoadFromTree_(ns.childNodes.item[i],nd);
+
+end;
+
+var i:integer;
+    Doc,DocD:DomDocument;
+    root,rootd,nxmld:IXMLDOMElement;
+
+
+    FileDescription:string;
+    pl:PDataItem2;
+    nl:PVirtualNode;
+begin
+result:=true;
+try
+ fGenID:=0;
+ try
+
+ Doc:=CoDOMDocument.Create;
+ Doc.Set_async(false);
+ Doc.Load(FileNameS);
+ Root:=Doc.documentElement;
+ FileDescription:=Root.getAttribute('FileDescription');
+
+
+ DocD:=CoDOMDocument.Create;
+ DocD.Set_async(false);
+ DocD.LoadXML('<Header/>');
+ RootD:=DocD.documentElement;
+ RootD.setAttribute('FileDescription',DescriptionTemplate);
+ RootD.setAttribute('Version','0101');
+ RootD.setAttribute('Checked',false);
+
+ nxmlD:=DocD.createElement(ClassIDToStr(ClassTypeTemplate));
+ nxmlD.setAttribute('OID',High(dword)-GenID);
+ nxmlD.setAttribute('Name','Inga Template');
+ RootD.appendChild(nxmlD);
+
+ for i:=0 to Root.childNodes.length-1 do
+  LoadFromTree_(Root.childNodes.item[i],nxmlD);
+
+
+ finally
+  Doc:=nil;
+ end;
+except
+ result:=false;
+end;
+end;
+
+
+procedure THAData.ResetGenID;
+begin
+ fGenID:=0;
+end;
+
+function THAData.Save(ExplorerMode:TExplorerMode; FileName:string; TV:TBaseVirtualTree; const Script:string; const Checked:boolean): boolean;
+
+var Doc:DomDocument;
+procedure SaveFromTree_(n: IXMLDOMElement; node: PVirtualNode);
+var ntv:PVirtualNode;
+    nxml:IXMLDOMElement;
+    p,plink:PDataItem2;
+    i,cc:integer;
+    st:TStringList;
+    v:OleVariant;
+begin
+ p:=tv.GetNodeData(node);
+ if p=nil then exit;
+ nxml:=Doc.createElement(ClassIDToStr(p^.ClassID));
+
+ nxml.setAttribute('OID',p^.OID);
+ if p^.LinkNode<>nil then
+  begin
+   plink:=p^.LinkNode;
+   nxml.setAttribute('OIDLink',plink^.OID);
+  end
+ else
+  nxml.setAttribute('Name',p^.Name);
+
+ v:=nxml.nodeTypedValue;
+ st:=TStringList.Create;
+ try
+  st.Text:=p^.Props;
+  for i:=0 to st.Count-1 do
+   nxml.setAttribute(st.Names[i],st.ValueFromIndex[i]);
+ finally
+  st.Free;
+ end;
+
+ n.appendChild(nxml);
+
+
+ ntv:=node.FirstChild;
+ cc:=Node.ChildCount;
+ for i:=0 to cc-1 do
+  begin
+    SaveFromTree_(nxml,ntv);
+    ntv:=tv.GetNextSibling(ntv);
+  end;
+end;
+
+
+var ntv:PVirtualNode;
+    p:PDataItem2;
+    Root:IXMLDOMElement;
+    i,cc:integer;
+
+begin
+ Doc:=CoDOMDocument.Create;
+ Doc.Set_async(false);
+ Doc.LoadXML('<Header/>');
+ Root:=Doc.documentElement;
+
+ case ExplorerMode of
+  Em_Templates:   begin
+                   Root.setAttribute('FileDescription',DescriptionTemplate);
+                   Root.setAttribute('Version','0101');
+                   Root.setAttribute('Checked',Checked);
+                  end;
+  Em_Controllers: begin
+                   Root.setAttribute('FileDescription',DescriptionConfig);
+                   Root.setAttribute('Version','0101');
+                   Root.setAttribute('Checked',Checked);
+                  end;
+ end;
+
+
+// Root.setAttribute('GenID',inttostr(fGenId));
+ if ExplorerMode=Em_Templates then
+  Root.setAttribute('Script',Script);
+
+
+ ntv:=tv.RootNode.FirstChild;
+ cc:=tv.rootNode.ChildCount;
+
+ 
+
+
+ for i:=0 to cc-1 do
+  begin
+    SaveFromTree_(Root,ntv);
+    ntv:=tv.GetNextSibling(ntv);
+  end;
+
+ case ExplorerMode of
+  Em_Templates:Doc.save(fBaseDir+TemplatesDir+'\'+FileName+ExtTemplate);
+
+  Em_Controllers:Doc.save(fBaseDir+ConfigsDir+'\'+FileName+ExtConfig);
+ end;
+
+ result:=true;
+end;
+
+
+
+end.

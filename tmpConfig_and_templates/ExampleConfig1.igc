@@ -1,0 +1,1 @@
+<Header FileDescription="IngaOPC Config File" Version="0101" Checked="-1"><T140 OID="1" Name="Устройство1" TemplateName="ExampleModbus" DriverName="ModBus.dll" Address="2" Param="0"/></Header>

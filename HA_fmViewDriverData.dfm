@@ -1,0 +1,117 @@
+object fmViewDriverData: TfmViewDriverData
+  Tag = 5
+  Left = 480
+  Top = 399
+  Width = 800
+  Height = 478
+  BorderStyle = bsSizeToolWin
+  Caption = #1051#1086#1075' '#1076#1088#1072#1081#1074#1077#1088#1086#1074
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  OldCreateOrder = False
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  PixelsPerInch = 96
+  TextHeight = 13
+  object Label1: TLabel
+    Left = 0
+    Top = 29
+    Width = 792
+    Height = 13
+    Align = alTop
+    Alignment = taCenter
+    Caption = #1053#1077#1090' '#1076#1088#1072#1081#1074#1077#1088#1086#1074
+    Visible = False
+  end
+  object PC: TPageControlEx
+    Left = 0
+    Top = 67
+    Width = 792
+    Height = 384
+    Align = alClient
+    TabOrder = 0
+  end
+  object Panel1: TPanel
+    Left = 0
+    Top = 0
+    Width = 792
+    Height = 29
+    Align = alTop
+    TabOrder = 1
+    object Label2: TLabel
+      Left = 6
+      Top = 7
+      Width = 134
+      Height = 13
+      Caption = #1056#1077#1078#1080#1084' '#1086#1090#1086#1073#1088#1072#1078#1077#1085#1080#1103' Data:'
+    end
+    object BtnFreeze: TSpeedButton
+      Left = 221
+      Top = 4
+      Width = 81
+      Height = 21
+      AllowAllUp = True
+      GroupIndex = 1
+      Caption = #1047#1072#1084#1086#1088#1086#1079#1080#1090#1100
+      Flat = True
+    end
+    object BtnStop: TSpeedButton
+      Left = 321
+      Top = 4
+      Width = 81
+      Height = 21
+      AllowAllUp = True
+      GroupIndex = 1
+      Caption = #1054#1089#1090#1072#1085#1086#1074#1080#1090#1100
+      Flat = True
+    end
+    object CBData: TComboBox
+      Left = 144
+      Top = 4
+      Width = 64
+      Height = 21
+      Style = csDropDownList
+      ItemHeight = 13
+      TabOrder = 0
+      Items.Strings = (
+        'HEX'
+        'DEC'
+        'BIN')
+    end
+  end
+  object PanelFilter: TPanel
+    Left = 0
+    Top = 42
+    Width = 792
+    Height = 25
+    Align = alTop
+    BevelOuter = bvNone
+    TabOrder = 2
+    Visible = False
+  end
+  object SD: TSaveDialog
+    Left = 44
+    Top = 100
+  end
+  object PopupMenu1: TPopupMenu
+    Left = 200
+    Top = 96
+    object N1: TMenuItem
+      Tag = 1
+      Caption = #1054#1095#1080#1089#1090#1080#1090#1100
+      OnClick = N1Click
+    end
+    object N2: TMenuItem
+      Caption = '-'
+    end
+    object N3: TMenuItem
+      Tag = 2
+      Caption = #1057#1086#1093#1088#1072#1085#1080#1090#1100' '#1082#1072#1082'...'
+      OnClick = N1Click
+    end
+  end
+end

@@ -1,0 +1,340 @@
+<Header FileDescription="IngaOPC Template File" Version="0101" Checked="-1" Script="procedure OpenCannel;
+var s:string;
+    i:integer;
+begin
+ s:=[&quot;Setup\Пароль счетчика&quot;].OldValue;
+ for i:=1 to Length(s) do
+  [&quot;Открыть канал связи&quot;][i-1]:=ord(s[i]);
+ [&quot;Открыть канал связи&quot;].run;
+
+end;
+
+procedure CloseCannel;
+begin
+ [&quot;Закрыть канал связи&quot;].run;
+
+end;
+
+procedure &lt;Канал связи открыт/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+
+begin
+end;
+
+procedure &lt;Энергия от сброса/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Чтение регистров накопленной энергии&quot;][0]:=0;
+ [&quot;Чтение регистров накопленной энергии&quot;][1]:=1;
+ [&quot;Чтение регистров накопленной энергии&quot;].run;
+end;
+
+procedure &lt;Чтение регистров накопленной энергии/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var dw:DWORD;
+begin
+ if DriverData.result=0 then
+  begin
+   dw:=MakeLong(MakeWord(DriverData[3],DriverData[2]),MakeWord(DriverData[1],DriverData[0]));
+   
+   [&quot;Текущее потребление&quot;].NewValue:=((dw/(2*[&quot;Setup\Постоянная счетчика&quot;].OldValue))*
+                                      [&quot;Setup\Коэффициенты\Kt&quot;].OldValue*[&quot;Setup\Коэффициенты\Ku&quot;].OldValue)/1000;
+  end
+ else
+  [&quot;Текущее потребление&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   
+end;
+
+procedure &lt;Январь/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+var nm,b:byte;
+    i:integer;
+begin
+ for i:=0 to Tags.Count-1 do
+  if Tags[i].PropExists(5000) then
+   begin
+    nm:=Tags[i].Prop[5000].Value;
+    b:=(3 shl 4) or nm;
+    [&quot;Чтение энергии по месяцам&quot;][0]:=b;
+    [&quot;Чтение энергии по месяцам&quot;][1]:=0;
+    [&quot;Чтение энергии по месяцам&quot;].run;
+   end;
+end;
+
+procedure &lt;Timer/&gt;OnTimer(Device:TIGDevice; Timer:TIGTimer);
+
+begin
+
+end;
+
+procedure &lt;Чтение энергии по месяцам/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var nm:byte;
+    dw:DWORD;
+    y,m,d:word;
+    dt:TDateTime;
+begin
+ try
+ nm:=Command[0] and $F;
+ if DriverData.result=0 then
+  begin
+   if DriverData.count&gt;1 then 
+    begin
+     dw:=MakeLong(MakeWord(DriverData[3],DriverData[2]),MakeWord(DriverData[1],DriverData[0]));
+     dt:=[&quot;Commands\Энергия по месяцам\Дата месяца&quot;].OldValue;
+     DecodeDate(dt,y,m,d);
+     if m=nm then
+      [&quot;Commands\Энергия по месяцам\Потребление за месяц&quot;].NewValue:=round(dw/(2*[&quot;Setup\Постоянная счетчика&quot;].OldValue))
+     else
+      [&quot;Commands\Энергия по месяцам\Потребление за месяц&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+       
+
+    end
+     else
+      begin
+       if DriverData.count=1 then
+        if DriverData[0]=5 then
+         opencannel;
+       [&quot;Commands\Энергия по месяцам\Потребление за месяц&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+      end; 
+  end
+ else
+  [&quot;Commands\Энергия по месяцам\Потребление за месяц&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;   
+ except
+  [&quot;Commands\Энергия по месяцам\Потребление за месяц&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+ end; 
+  
+end;
+
+procedure &lt;Template/&gt;OnActivateDevice(Device:TIGDevice);
+var s:string;
+    i:integer;
+begin
+// [&quot;Канал связи открыт&quot;].newValue:=false;
+//  OpenCannel;
+  
+
+ s:=[&quot;Setup\Пароль счетчика&quot;].OldValue;
+ for i:=1 to Length(s) do
+  [&quot;Загрузить пароль&quot;][i-1]:=ord(s[i]);
+ [&quot;Загрузить пароль&quot;].run; 
+ 
+ [&quot;Чтение начала массива&quot;][0]:=0;
+ [&quot;Чтение начала массива&quot;][1]:=0;
+ [&quot;Чтение начала массива&quot;][2]:=4;
+ [&quot;Чтение начала массива&quot;].run;
+ 
+end;
+
+procedure &lt;Template/&gt;OnDeactivateDevice(Device:TIGDevice);
+begin
+ CloseCannel;  
+end;
+
+procedure &lt;Открыть канал связи/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+begin
+ if DriverData.result=0 then
+  begin
+   if DriverData[0]=0 then
+    [&quot;Канал связи открыт&quot;].NewValue:=true;
+  end;
+end;
+
+procedure &lt;Чтение регистров накопленной энергии/&gt;OnBeforeWrite(Device:TIGDevice; Command:TIGCommand; var Cancel:boolean);
+begin
+ if not [&quot;Канал связи открыт&quot;].OldValue then
+  opencannel;
+ // Cancel:=true; 
+end;
+
+procedure &lt;Дата суток/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+var d,mo,y,hh,mm,ss,mss:word;
+    dt,dt0:TDateTime;
+    countDays:integer;
+    addr:word;
+begin
+ [&quot;Commands\Посуточное потребление\Потребление за сутки&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+ [&quot;Commands\Посуточное потребление\Потребление на начало суток&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+ if [&quot;Дата и время нулевого указателя&quot;].OldQuality&lt;&gt;OPC_QUALITY_GOOD then
+  begin
+  
+  end
+ else
+  begin
+    dt:=[&quot;Commands\Посуточное потребление\Дата суток&quot;].vqt.value;
+    [&quot;Commands\Посуточное потребление\Дата суток&quot;].Newvalue:=dt;
+    dt0:=[&quot;Дата и время нулевого указателя&quot;].OldValue;
+    CountDays:=Trunc(dt)-Trunc(dt0);
+    if countDays&gt;0 then
+     begin
+      DecodeDate(dt0,y,mo,d);
+      DecodeTime(dt0,hh,mm,ss,mss);
+      hh:=(24-hh)+1;
+      addr:=(hh*24)+(countDays-1)*(24*24);
+     end;
+    
+    
+  end; 
+
+
+ 
+end;
+
+procedure &lt;Чтение энергии за сутки/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var dw:DWORD;
+begin
+ if DriverData.result=0 then
+  begin
+   if DriverData.count&gt;1 then 
+    begin
+     dw:=MakeLong(MakeWord(DriverData[3],DriverData[2]),MakeWord(DriverData[1],DriverData[0]));
+     [&quot;Commands\Посуточное потребление\Потребление за сутки&quot;].NewValue:=round(dw/(2*[&quot;Setup\Постоянная счетчика&quot;].OldValue));
+    end
+   else
+    begin
+       if DriverData.count=1 then
+        if DriverData[0]=5 then
+         opencannel;
+       [&quot;Commands\Посуточное потребление\Потребление за сутки&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+    end;   
+  end
+ else
+   [&quot;Commands\Посуточное потребление\Потребление за сутки&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+    
+   
+end;
+
+procedure &lt;Дата на счетчике/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Чтение даты на счетчике&quot;].run;
+end;
+
+procedure &lt;Чтение даты на счетчике/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var y,m,d,hh,mm,ss:word;
+    dt:TDateTime;
+begin
+ if DriverData.result=0 then
+  begin
+   if DriverData.Count=8 then
+    begin
+     ss:=strtoint(inttohex(DriverData[0],2));
+     mm:=strtoint(inttohex(DriverData[1],2));
+     hh:=strtoint(inttohex(DriverData[2],2));
+     d :=strtoint(inttohex(DriverData[4],2)); 
+     m :=strtoint(inttohex(DriverData[5],2));
+     y :=strtoint(inttohex(DriverData[6],2)); 
+     try
+      dt:=EncodeDate(y+2000,m,d);
+      dt:=EncodeTime(hh,mm,ss,0)+dt;
+      [&quot;Дата на счетчике&quot;].NewValue:=dt;
+     except
+      [&quot;Дата на счетчике&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+     end;
+    end
+   else
+    [&quot;Дата на счетчике&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+  end
+ else
+  [&quot;Дата на счетчике&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+   
+end;
+
+procedure &lt;Дата месяца/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+var b:byte;
+    y,m,d:word;
+    dt:TDateTime;
+begin
+ dt:=[&quot;Commands\Энергия по месяцам\Дата месяца&quot;].vqt.value;
+ [&quot;Commands\Энергия по месяцам\Дата месяца&quot;].NewValue:=dt;
+ try
+  DecodeDate(dt,y,m,d);
+  b:=(3 shl 4) or m;
+  [&quot;Чтение энергии по месяцам&quot;][0]:=b;
+  [&quot;Чтение энергии по месяцам&quot;][1]:=0;
+  [&quot;Чтение энергии по месяцам&quot;].run;
+ except
+ end;
+ 
+end;
+
+procedure &lt;Текущее потребление/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+
+end;
+
+procedure &lt;Указатель профиля мощности/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+  [&quot;Чтение текущего указателя профиля мощности&quot;].run;
+
+end;
+
+procedure &lt;Чтение текущего указателя профиля мощности/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+begin
+ if DriverData.result=0 then
+  begin
+   if DriverData.Count=7 then
+    begin
+     [&quot;Указатель профиля мощности&quot;].NewValueAsArray[0]:=DriverData[0];
+     [&quot;Указатель профиля мощности&quot;].NewValueAsArray[1]:=DriverData[1];
+     [&quot;Указатель профиля мощности&quot;].NewValueAsArray[2]:=DriverData[2];
+     [&quot;Указатель профиля мощности&quot;].NewValueAsArray[3]:=DriverData[3];
+     [&quot;Указатель профиля мощности&quot;].NewValueAsArray[4]:=DriverData[4];
+     [&quot;Указатель профиля мощности&quot;].NewValueAsArray[5]:=DriverData[5];
+     [&quot;Указатель профиля мощности&quot;].NewValueAsArray[6]:=DriverData[6];
+     [&quot;Указатель профиля мощности&quot;].NewValueAsArray[7]:=DriverData[7];
+    end
+   else
+   [&quot;Указатель профиля мощности&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+  end
+ else
+  [&quot;Указатель профиля мощности&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+end;
+
+procedure &lt;Начальный массив энергии/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Чтение начала массива&quot;][0]:=0;
+ [&quot;Чтение начала массива&quot;][1]:=0;
+ [&quot;Чтение начала массива&quot;][2]:=4;
+ [&quot;Чтение начала массива&quot;].run;
+end;
+
+procedure &lt;Чтение начала массива/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var y,m,d,hh:word;
+    dt:TDateTime;
+begin
+ if DriverData.result=0 then
+  begin
+   if DriverData.Count=4 then
+    begin
+     hh:=strtoint(inttohex(DriverData[0],2));
+     d :=strtoint(inttohex(DriverData[1],2)); 
+     m :=strtoint(inttohex(DriverData[2],2));
+     y :=strtoint(inttohex(DriverData[3],2)); 
+     try
+      dt:=EncodeDate(y+2000,m,d);
+      dt:=EncodeTime(hh,0,0,0)+dt;
+      [&quot;Дата и время нулевого указателя&quot;].NewValue:=dt;
+     except
+       [&quot;Дата и время нулевого указателя&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+     end;  
+
+    end
+   else
+   [&quot;Дата и время нулевого указателя&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+  end
+ else       
+  [&quot;Дата и время нулевого указателя&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+end;
+
+procedure &lt;Чтение начала массива/&gt;OnBeforeWrite(Device:TIGDevice; Command:TIGCommand; var Cancel:boolean);
+begin
+ if not [&quot;Канал связи открыт&quot;].OldValue then
+  opencannel;
+end;
+
+procedure &lt;Дата и время нулевого указателя/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+  [&quot;Чтение начала массива&quot;][0]:=0;
+ [&quot;Чтение начала массива&quot;][1]:=0;
+ [&quot;Чтение начала массива&quot;][2]:=4;
+ [&quot;Чтение начала массива&quot;].run;
+end;
+
+begin
+
+end."><T10 OID="1" Description="Номер команды представляет собой символы в шестнадцатиричной кодировке. Пример: 0504 где 05 - код запроса, 04 - номер парметра " Name="Template" DateCreate="26.03.2007 14:24:10" DateLastUpdate="21.02.2008 17:37:56" CompileID="94" OnActivateDevice="&lt;Template/&gt;OnActivateDevice" OnDeactivateDevice="&lt;Template/&gt;OnDeactivateDevice"><T20 OID="2" Description="" Name="Tags"><T50 OID="8" Description="" Name="Setup"><T120 OID="9" Description="" Name="Пароль счетчика" DataType="8" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T50 OID="59" Description="" Name="Коэффициенты"><T120 OID="60" Description="" Name="Kt" DataType="4" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="61" Description="" Name="Ku" DataType="4" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/></T50><T120 OID="62" Description="" Name="Постоянная счетчика" DataType="5" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/></T50><T50 OID="10" Description="" Name="Commands"><T50 OID="13" Description="" Name="Энергия по месяцам"><T120 OID="14" Description="" Name="Январь" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Январь/&gt;OnRead" OnWrite=""><T145 OID="38" Description="" OIDLink="37" Value="03000100000002000000"/></T120><T120 OID="26" Description="" Name="Февраль" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Январь/&gt;OnRead" OnWrite=""><T145 OID="39" Description="" OIDLink="37" Value="03000200000002000000"/></T120><T120 OID="27" Description="" Name="Март" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Январь/&gt;OnRead" OnWrite=""><T145 OID="40" Description="" OIDLink="37" Value="03000300000002000000"/></T120><T120 OID="28" Description="" Name="Апрель" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Январь/&gt;OnRead" OnWrite=""><T145 OID="41" Description="" OIDLink="37" Value="03000400000002000000"/></T120><T120 OID="29" Description="" Name="Май" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Январь/&gt;OnRead" OnWrite=""><T145 OID="42" Description="" OIDLink="37" Value="03000500000002000000"/></T120><T120 OID="30" Description="" Name="Июнь" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Январь/&gt;OnRead" OnWrite=""><T145 OID="43" Description="" OIDLink="37" Value="03000600000002000000"/></T120><T120 OID="31" Description="" Name="Июль" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Январь/&gt;OnRead" OnWrite=""><T145 OID="44" Description="" OIDLink="37" Value="03000700000002000000"/></T120><T120 OID="32" Description="" Name="Август" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Январь/&gt;OnRead" OnWrite=""><T145 OID="45" Description="" OIDLink="37" Value="03000800000002000000"/></T120><T120 OID="33" Description="" Name="Сентябрь" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Январь/&gt;OnRead" OnWrite=""><T145 OID="46" Description="" OIDLink="37" Value="03000900000002000000"/></T120><T120 OID="36" Description="" Name="Октябрь" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Январь/&gt;OnRead" OnWrite=""><T145 OID="47" Description="" OIDLink="37" Value="03000A00000002000000"/></T120><T120 OID="34" Description="" Name="Ноябрь" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Январь/&gt;OnRead" OnWrite=""><T145 OID="48" Description="" OIDLink="37" Value="03000B00000002000000"/></T120><T120 OID="35" Description="" Name="Декабрь" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Январь/&gt;OnRead" OnWrite=""><T145 OID="49" Description="" OIDLink="37" Value="03000C00000002000000"/></T120><T120 OID="63" Description="" Name="Потребление за месяц" DataType="19" Readable="True" Writeable="False" OnRead="" OnWrite=""/><T120 OID="64" Description="" Name="Дата месяца" DataType="7" Readable="True" Writeable="True" OnRead="" OnWrite="&lt;Дата месяца/&gt;OnWrite"/></T50><T50 OID="54" Description="" Name="Посуточное потребление"><T120 OID="55" Description="" Name="Потребление за сутки" DataType="19" Readable="True" Writeable="False" OnRead="" OnWrite=""/><T120 OID="56" Description="" Name="Дата суток" DataType="7" Readable="True" Writeable="True" OnRead="" OnWrite="&lt;Дата суток/&gt;OnWrite"/><T120 OID="74" Description="" Name="Потребление на начало суток" DataType="19" Readable="True" Writeable="False" OnRead="" OnWrite=""/></T50><T50 OID="68" Description="" Name="Получасовки"><T120 OID="69" Description="" Name="Дата получаса" DataType="7" Readable="True" Writeable="True" OnRead="" OnWrite=""/><T120 OID="70" Description="" Name="Мощность получаса" DataType="5" Readable="True" Writeable="False" OnRead="" OnWrite=""/></T50></T50><T120 OID="6" Description="" Name="Канал связи открыт" DataType="11" Readable="True" Writeable="True" OnRead="" OnWrite="&lt;Канал связи открыт/&gt;OnWrite"/><T120 OID="57" Description="" Name="Дата на счетчике" DataType="7" Readable="True" Writeable="True" OnRead="&lt;Дата на счетчике/&gt;OnRead" OnWrite=""/><T120 OID="12" Description="" Name="Текущее потребление" DataType="5" Readable="True" Writeable="False" OnRead="&lt;Энергия от сброса/&gt;OnRead" OnWrite=""/><T120 OID="67" Description="" Name="Указатель профиля мощности" DataType="8209" Readable="True" Writeable="False" OnRead="&lt;Указатель профиля мощности/&gt;OnRead" OnWrite=""/><T120 OID="72" Description="" Name="Начальный массив энергии" DataType="8209" Readable="True" Writeable="False" OnRead="&lt;Начальный массив энергии/&gt;OnRead" OnWrite=""/><T120 OID="73" Description="" Name="Дата и время нулевого указателя" DataType="7" Readable="True" Writeable="False" OnRead="&lt;Дата и время нулевого указателя/&gt;OnRead" OnWrite=""/></T20><T25 OID="3" Description="" Name="Properties"><T125 OID="37" Description="" Name="Номер месяца" DataType="17" PropID="5000" UniqueValue="True"/></T25><T30 OID="4" Description="" Name="Commands"><T130 OID="7" Description="" Name="Открыть канал связи" NoCommand="01" CountWriteBytes="6" Param="0" OnBeforeWrite="" OnAfterRead="&lt;Открыть канал связи/&gt;OnAfterRead"/><T130 OID="11" Description="" Name="Чтение регистров накопленной энергии" NoCommand="05" CountWriteBytes="2" Param="0" OnBeforeWrite="&lt;Чтение регистров накопленной энергии/&gt;OnBeforeWrite" OnAfterRead="&lt;Чтение регистров накопленной энергии/&gt;OnAfterRead"/><T130 OID="51" Description="" Name="Чтение энергии по месяцам" NoCommand="05" CountWriteBytes="2" Param="0" OnBeforeWrite="&lt;Чтение регистров накопленной энергии/&gt;OnBeforeWrite" OnAfterRead="&lt;Чтение энергии по месяцам/&gt;OnAfterRead"/><T130 OID="52" Description="" Name="Закрыть канал связи" NoCommand="02" CountWriteBytes="0" Param="0" OnBeforeWrite="" OnAfterRead=""/><T130 OID="53" Description="" Name="Чтение энергии за сутки" NoCommand="0A06" CountWriteBytes="4" Param="0" OnBeforeWrite="" OnAfterRead="&lt;Чтение энергии за сутки/&gt;OnAfterRead"/><T130 OID="58" Description="" Name="Чтение даты на счетчике" NoCommand="0400" CountWriteBytes="0" Param="0" OnBeforeWrite="" OnAfterRead="&lt;Чтение даты на счетчике/&gt;OnAfterRead" Priority="500"/><T130 OID="65" Description="" Name="Загрузить пароль" NoCommand="PASS" CountWriteBytes="6" Param="0" OnBeforeWrite="" OnAfterRead=""/><T130 OID="66" Description="" Name="Чтение текущего указателя профиля мощности" NoCommand="0804" CountWriteBytes="0" Param="0" OnBeforeWrite="" OnAfterRead="&lt;Чтение текущего указателя профиля мощности/&gt;OnAfterRead"/><T130 OID="71" Description="" Name="Чтение начала массива" NoCommand="0603" CountWriteBytes="3" Param="0" OnBeforeWrite="&lt;Чтение начала массива/&gt;OnBeforeWrite" OnAfterRead="&lt;Чтение начала массива/&gt;OnAfterRead"/></T30><T38 OID="5" Description="" Name="Timers"><T138 OID="50" Description="" Name="Timer" Enabled="False" Interval="15000" OnTimer="&lt;Timer/&gt;OnTimer"/></T38></T10></Header>

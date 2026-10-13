@@ -1,0 +1,50 @@
+
+uses
+  SysUtils,
+  Classes,
+  windows,
+  ActiveX,
+  Main in 'Main.pas',
+  Intf in 'Intf.pas',
+  UDialog in 'UDialog.pas' {FormDialog};
+
+function Write(ppDriverData:pDriverData):HResult; stdcall;
+begin
+ result:=IngaDrv.Write(ppDriverData);
+end;
+
+function Read(out ppDriverData:pDriverData):HResult; stdcall;
+begin
+ result:=IngaDrv.Read(ppDriverData);
+end;
+
+function OpenDriver:HResult; stdcall;
+begin
+ result:=IngaDrv.OpenDrv;
+end;
+
+function CloseDriver:HResult; stdcall;
+begin
+ result:=IngaDrv.CloseDrv;
+end;
+
+function ShowDialog:HResult; stdcall;
+begin
+ result:=s_ok;
+ with TFormDialog.Create(nil) do
+  begin
+   ShowModal;
+  end;
+
+end;
+
+ exports
+  Write,
+  Read,
+  OpenDriver,
+  CloseDriver,
+  ShowDialog;
+
+
+begin
+end.

@@ -1,0 +1,552 @@
+<Header FileDescription="IngaOPC Template File" Version="0101" Checked="-1" Script="function ExtractDWord(DriverData:TIGDriverData; var Value:dword):boolean;
+var s:string;
+    i:integer;
+begin
+ result:=false;
+ if DriverData.result=0 then
+  if DriverData.count=8 then
+   begin
+     s:='';
+     for i:=0 to DriverData.count-1 do
+      s:=s+chr(DriverData[i]);
+     try
+       Value:=strtoint(s);
+       result:=true;
+     except
+     end;  
+   end;
+  
+
+end;
+
+
+function ExtractDateTime(DriverData:TIGDriverData; var Value:TDateTime):boolean;
+var ss,s,m,h,d,mo,y:word;
+begin
+ result:=false;
+ if DriverData.result=0 then
+  begin
+   if DriverData.count=13 then
+   try
+    h:=strtoint(chr(DriverData[1])+chr(DriverData[2]));
+    m:=strtoint(chr(DriverData[3])+chr(DriverData[4]));
+    s:=strtoint(chr(DriverData[5])+chr(DriverData[6]));
+    
+    d:=strtoint(chr(DriverData[7])+chr(DriverData[8]));
+    mo:=strtoint(chr(DriverData[9])+chr(DriverData[10]));
+    y:=strtoint(chr(DriverData[11])+chr(DriverData[12]))+2000;
+    Value:=EncodeDate(y,mo,d);
+    Value:=Value+EncodeTime(h,m,s,ss);
+    result:=true;
+   except
+    
+   end; 
+  end;
+ 
+
+end;
+
+procedure SetOtvResult(Res:dword);
+begin
+ if Res=0 then
+  begin
+   [&quot;ShortSost&quot;].NewValue:=1;
+  end
+ else
+  [&quot;ShortSost&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+end;
+ 
+
+
+procedure &lt;Тест прибора/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+begin
+ [&quot;Command_T&quot;].run;  
+end;
+
+procedure &lt;Тест прибора/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_T&quot;].run;
+end;
+
+procedure &lt;Команда Тест прибора/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+begin
+ SetOtvResult(DriverData.result);
+ if DriverData.result=0 then
+  begin
+   if DriverData.count&gt;0 then
+    if chr(DriverData[0])='Y' then
+     [&quot;Commands\Дополнительно\Тест прибора&quot;].NewValue:=true
+    else
+     [&quot;Commands\Дополнительно\Тест прибора&quot;].NewValue:=false; 
+  end
+ else
+  [&quot;Commands\Дополнительно\Тест прибора&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+ 
+end;
+
+procedure &lt;Потр. энергия по полупиковому тарифу/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_E&quot;].run;
+end;
+
+procedure &lt;Command_E/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var d:dword;
+begin
+ SetOtvResult(DriverData.result);
+ if ExtractDWord(DriverData,d) then
+  [&quot;Commands\Потребленная энергия по тарифам\Полупиковой тариф&quot;].NewValue:=d
+ else
+  [&quot;Commands\Потребленная энергия по тарифам\Полупиковой тариф&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+ 
+end;
+
+procedure &lt;Command_W/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var d:dword;
+begin
+ SetOtvResult(DriverData.result);
+ if ExtractDWord(DriverData,d) then
+  [&quot;Commands\Потребленная энергия по тарифам\Льготный тариф&quot;].NewValue:=d
+ else
+  [&quot;Commands\Потребленная энергия по тарифам\Льготный тариф&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+ 
+
+end;
+
+procedure &lt;Потр. энергия по льготному тарифу1/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_W&quot;].run;
+end;
+
+procedure &lt;Потр. энергия по пиковому тарифу/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_V&quot;].run;
+end;
+
+procedure &lt;Command_V/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var d:dword;
+begin
+ SetOtvResult(DriverData.result);
+ if ExtractDWord(DriverData,d) then
+  [&quot;Commands\Потребленная энергия по тарифам\Пиковой тариф&quot;].NewValue:=d
+ else
+  [&quot;Commands\Потребленная энергия по тарифам\Пиковой тариф&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+ 
+
+end;
+
+procedure &lt;Номер версии прибора/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_R&quot;].run;
+end;
+
+procedure &lt;Command_R/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var s:string;
+    i:integer;
+begin
+ SetOtvResult(DriverData.result);
+ if DriverData.result=0 then
+  begin
+   if DriverData.count=2 then
+    begin
+     s:='';
+     for i:=0 to DriverData.count-1 do
+      s:=s+chr(DriverData[i]);
+     [&quot;Commands\Дополнительно\Номер версии прибора&quot;].NewValue:=s;
+    end;
+  end
+ else
+  [&quot;Commands\Дополнительно\Номер версии прибора&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+end;
+
+procedure &lt;Command_\F/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var dt:TDateTime;
+begin
+ SetOtvResult(DriverData.result);
+ if ExtractDateTime(DriverData,dt) then
+  [&quot;Commands\Дополнительно\Дата и время отключения питания&quot;].newvalue:=dt
+ else 
+  [&quot;Commands\Дополнительно\Дата и время отключения питания&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+end;
+
+procedure &lt;Дата и время отключения питания/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+[&quot;Command_DataOff&quot;].run;
+end;
+
+procedure &lt;Дата и время включения питания/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_DataOn&quot;].run;
+end;
+
+procedure &lt;Command_DataOn/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var dt:TDateTime;
+begin
+ SetOtvResult(DriverData.result);
+ if ExtractDateTime(DriverData,dt) then
+  [&quot;Commands\Дополнительно\Дата и время включения питания&quot;].newvalue:=dt
+ else 
+  [&quot;Commands\Дополнительно\Дата и время включения питания&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+end;
+
+procedure &lt;Дата и время на счетчике/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+begin
+ [&quot;Command_DataCurr&quot;].run;
+end;
+
+procedure &lt;Command_DataCurr/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var dt:TDateTime;
+begin
+ SetOtvResult(DriverData.result);
+ if ExtractDateTime(DriverData,dt) then
+  [&quot;Commands\Дополнительно\Дата и время на счетчике&quot;].newvalue:=dt
+ else 
+  [&quot;Commands\Дополнительно\Дата и время на счетчике&quot;].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+end;
+
+procedure &lt;Дата и время на счетчике/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+var ss,s,m,h,d,mo,y:word;
+    str:string;
+begin
+ try
+ DecodeDate([&quot;Commands\Дополнительно\Дата и время на счетчике&quot;].vqt.value,y,mo,d);
+ DecodeTime([&quot;Commands\Дополнительно\Дата и время на счетчике&quot;].vqt.value,h,m,s,ss);
+ 
+ str:=inttostr(2);
+ [&quot;Command_DataCurrWrite&quot;][0]:=ord(str[1]);
+ 
+ if d&lt;=9 then
+  str:='0'+inttostr(d)
+ else
+  str:=inttostr(d); 
+ 
+ [&quot;Command_DataCurrWrite&quot;][1]:=ord(str[1]);
+ [&quot;Command_DataCurrWrite&quot;][2]:=ord(str[2]);
+ 
+ if mo&lt;=9 then
+  str:='0'+inttostr(mo)
+ else
+  str:=inttostr(mo); 
+ 
+ [&quot;Command_DataCurrWrite&quot;][3]:=ord(str[1]);
+ [&quot;Command_DataCurrWrite&quot;][4]:=ord(str[2]);
+ 
+ y:=y-2000;
+ if y&lt;=9 then
+  str:='0'+inttostr(y)
+ else
+  str:=inttostr(y); 
+ 
+ [&quot;Command_DataCurrWrite&quot;][5]:=ord(str[1]);
+ [&quot;Command_DataCurrWrite&quot;][6]:=ord(str[2]);
+ 
+ [&quot;Command_DataCurrWrite&quot;].run;
+ 
+ if h&lt;=9 then
+  str:='0'+inttostr(h)
+ else
+  str:=inttostr(h); 
+ 
+ [&quot;Command_TimeCurrWrite&quot;][0]:=ord(str[1]);
+ [&quot;Command_TimeCurrWrite&quot;][1]:=ord(str[2]);
+ 
+ if m&lt;=9 then
+  str:='0'+inttostr(m)
+ else
+  str:=inttostr(m); 
+ 
+ [&quot;Command_TimeCurrWrite&quot;][2]:=ord(str[1]);
+ [&quot;Command_TimeCurrWrite&quot;][3]:=ord(str[2]);
+ 
+ 
+ if s&lt;=9 then
+  str:='0'+inttostr(s)
+ else
+  str:=inttostr(s); 
+ 
+ [&quot;Command_TimeCurrWrite&quot;][4]:=ord(str[1]);
+ [&quot;Command_TimeCurrWrite&quot;][5]:=ord(str[2]);
+ 
+ [&quot;Command_TimeCurrWrite&quot;].run;
+ 
+ except
+ end;
+
+end;
+
+procedure &lt;Энергия по полупиковому тарифу за Январь/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+var i,j:integer;
+    s:string;
+begin
+ for i:=0 to Tags.count-1 do
+  if Tags[i].PropExists(5000) then
+   begin
+     j:=Tags[i].Prop[5000].Value;
+     if j&lt;=9 then
+      s:='0'+inttostr(j)
+     else
+      s:=inttostr(j);
+     [&quot;Command_[&quot;][0]:=ord(s[1]);
+     [&quot;Command_[&quot;][1]:=ord(s[2]);
+     [&quot;Command_[&quot;].run;
+   end;
+end;
+
+procedure &lt;Command_[/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var i,j:integer;
+    s:string;
+    d:dword;
+begin
+ SetOtvResult(DriverData.result);
+ if Command.count=0 then exit;
+ s:=chr(Command[0])+chr(Command[1]);
+ j:=strtoint(s);
+ for i:=0 to Device.Tags.count-1 do
+  if Device.Tags[i].PropExists(5000) then
+   if Device.Tags[i].Prop[5000].Value=j then
+    begin
+      if ExtractDWord(DriverData,d) then
+        Device.Tags[i].NewValue:=d
+      else
+        Device.Tags[i].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+      break;   
+    end;
+  
+end;
+
+procedure &lt;Command_T/&gt;OnBeforeWrite(Device:TIGDevice; Command:TIGCommand; var Cancel:boolean);
+begin
+ [&quot;Кол-во запросов&quot;].NewValue:=[&quot;Кол-во запросов&quot;].OldValue+1;
+
+end;
+
+procedure &lt;Template/&gt;OnActivateDevice(Device:TIGDevice);
+begin
+  [&quot;Имя шаблона&quot;].NewValue:=Device.TemplateName;
+end;
+
+procedure &lt;Дата получаса/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+
+ 
+var d,mo,y:word;
+    str:string;
+    t,tx,cmin:double;
+    dt:TDateTime;
+begin
+ cmin:=6.9444444444444444444444444444444e-4;
+ try
+  DecodeDate([&quot;Commands\Получасовые нагрузки\Дата получаса&quot;].vqt.value,y,mo,d);
+  
+  if mo&lt;=9 then
+   str:='0'+inttostr(mo)
+  else
+   str:=inttostr(mo);
+  
+  [&quot;Command_?&quot;][0]:=ord(str[1]);
+  [&quot;Command_?&quot;][1]:=ord(str[2]);
+  
+  if d&lt;=9 then
+   str:='0'+inttostr(d)
+  else
+   str:=inttostr(d);
+  
+  [&quot;Command_?&quot;][2]:=ord(str[1]);
+  [&quot;Command_?&quot;][3]:=ord(str[2]);
+  
+  dt:=[&quot;Commands\Получасовые нагрузки\Дата получаса&quot;].vqt.value;
+  [&quot;Commands\Получасовые нагрузки\Дата получаса&quot;].NewValue:=dt;
+  t:=dt-round(dt);
+  {tx:=1/24;
+  tx:=tx/2;}
+  tx:=0.020833333333333333333333333333333;
+  t:=t/tx;  
+  
+  mo:=round(t);
+  if mo&lt;=9 then
+   str:='0'+inttostr(mo)
+  else
+   str:=inttostr(mo);
+  
+  [&quot;Command_?&quot;][4]:=ord(str[1]);
+  [&quot;Command_?&quot;][5]:=ord(str[2]);
+  [&quot;Command_?&quot;].run;
+  
+
+ except
+ end;
+
+
+
+end;
+
+procedure &lt;Command_?/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var s:string;
+    i,ii,j:integer;
+    en:dword;
+begin
+ if Command.count=0 then exit;
+ if DriverData.result&lt;&gt;0 then
+  begin
+   Command.run;
+   exit;
+  end; 
+ s:=chr(Command[4])+chr(Command[5]);
+ j:=strtoint(s);
+ for i:=0 to Device.Tags.count-1 do
+  if Device.Tags[i].PropExists(5002) then
+   if Device.Tags[i].Prop[5002].Value=j then
+    begin
+     if DriverData.result=0 then
+      begin
+       try
+        s:='';
+        for ii:=1 to 4 do
+         s:=s+chr(DriverData[ii]);
+        en:=strtoint(s); 
+        Device.Tags[i].NewValue:=en;
+       except
+         Device.Tags[i].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+       end;  
+      end
+     else
+      Device.Tags[i].NewQuality:=OPC_QUALITY_COMM_FAILURE;
+     break;  
+    end;
+  
+
+end;
+
+procedure &lt;Дата суток/&gt;OnWrite(Device:TIGDevice; Tags:TIGTags);
+var c1sec,c30sec,t,nt:double;
+    i:integer;
+    d,mo,y:word;
+    strmo,strd,str:string;
+    dt:TDateTime;
+begin
+ c1sec:=6.9444444444444444444444444444444e-4;
+ c30sec:=0.020833333333333333333333333333333;
+ try
+  dt:=[&quot;Commands\Посуточное потребление\Дата суток&quot;].vqt.value;
+  [&quot;Commands\Посуточное потребление\Дата суток&quot;].newValue:=dt;
+  [&quot;Commands\Посуточное потребление\Потребление за сутки&quot;].newvalue:=0;
+  DecodeDate(dt,y,mo,d);
+  if mo&lt;=9 then
+   strmo:='0'+inttostr(mo)
+  else
+   strmo:=inttostr(mo);
+  
+  if d&lt;=9 then
+   strd:='0'+inttostr(d)
+  else
+   strd:=inttostr(d);
+  
+  t:=c1sec;        
+  for i:=0 to 47 do
+   begin
+          
+          [&quot;Command_?1&quot;][0]:=ord(strmo[1]);
+          [&quot;Command_?1&quot;][1]:=ord(strmo[2]);
+          [&quot;Command_?1&quot;][2]:=ord(strd[1]);
+          [&quot;Command_?1&quot;][3]:=ord(strd[2]);
+          
+          
+          nt:=t/c30sec;  
+          mo:=round(nt);
+          if mo&lt;=9 then
+           str:='0'+inttostr(mo)
+          else
+           str:=inttostr(mo);
+          
+          [&quot;Command_?1&quot;][4]:=ord(str[1]);
+          [&quot;Command_?1&quot;][5]:=ord(str[2]);
+          [&quot;Command_?1&quot;].run;
+          
+          t:=t+c30sec;
+  end;
+
+ except
+ end;
+end;
+
+procedure &lt;Command_?1/&gt;OnAfterRead(Device:TIGDevice; Command:TIGCommand; DriverData:TIGDriverData);
+var s:string;
+    i:integer;
+begin
+ if DriverData.result=0 then
+  begin
+  if DriverData.count=6 then
+   begin
+     s:='';
+     for i:=1 to 4 do
+      s:=s+chr(DriverData[i]);
+     try
+      [&quot;Commands\Посуточное потребление\Потребление за сутки&quot;].newvalue:=
+      [&quot;Commands\Посуточное потребление\Потребление за сутки&quot;].oldValue+strtoint(s);
+     except
+      [&quot;Commands\Посуточное потребление\Потребление за сутки&quot;].newQuality:=OPC_QUALITY_COMM_FAILURE;
+     end;  
+   end;
+  end
+ else
+  [&quot;Commands\Посуточное потребление\Потребление за сутки&quot;].newQuality:=OPC_QUALITY_COMM_FAILURE;
+  
+  
+
+end;
+
+procedure &lt;Нагрузка на 00:00/&gt;OnRead(Device:TIGDevice; Tags:TIGTags; FromGroup:boolean);
+var d,mo,y,no:word;
+    str,strmo,strd:string;
+    dt:TDateTime;
+    i:integer;
+begin
+ if [&quot;Commands\Получасовые нагрузки\Дата получаса&quot;].OldQuality&lt;&gt;OPC_QUALITY_GOOD then exit;
+ try
+  
+  dt:=[&quot;Commands\Получасовые нагрузки\Дата получаса&quot;].OldValue;
+  DecodeDate(dt,y,mo,d);
+
+  if mo&lt;=9 then
+   strmo:='0'+inttostr(mo)
+  else
+   strmo:=inttostr(mo);
+  
+  if d&lt;=9 then
+   strd:='0'+inttostr(d)
+  else
+   strd:=inttostr(d);
+  
+  for i:=0 to Tags.count-1 do
+  if Tags[i].PropExists(5002) then
+   begin
+          
+          [&quot;Command_?&quot;][0]:=ord(strmo[1]);
+          [&quot;Command_?&quot;][1]:=ord(strmo[2]);
+          [&quot;Command_?&quot;][2]:=ord(strd[1]);
+          [&quot;Command_?&quot;][3]:=ord(strd[2]);
+          
+          no:=Tags[i].Prop[5002].value;
+          
+          if no&lt;=9 then
+           str:='0'+inttostr(no)
+          else
+           str:=inttostr(no);
+          
+          [&quot;Command_?&quot;][4]:=ord(str[1]);
+          [&quot;Command_?&quot;][5]:=ord(str[2]);
+          [&quot;Command_?&quot;].run;
+          
+          
+  end;
+  
+  
+
+ except
+ end;
+
+
+
+end;
+
+begin
+
+end."><T10 OID="1" Name="Template" DateCreate="20.02.2007 17:26:37" DateLastUpdate="14.03.2007 14:55:46" CompileID="100" OnActivateDevice="&lt;Template/&gt;OnActivateDevice"><T20 OID="2" Name="Tags"><T50 OID="58" Name="Commands"><T50 OID="84" Name="Потребленная энергия по тарифам"><T120 OID="8" Name="Полупиковой тариф" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Потр. энергия по полупиковому тарифу/&gt;OnRead" OnWrite=""><T145 OID="62" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="10" Name="Льготный тариф" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Потр. энергия по льготному тарифу1/&gt;OnRead" OnWrite=""><T145 OID="63" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="12" Name="Пиковой тариф" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Потр. энергия по пиковому тарифу/&gt;OnRead" OnWrite=""><T145 OID="64" OIDLink="61" Value="03000100000002000000"/></T120></T50><T50 OID="27" Name="Энергия по месяцам"><T120 OID="28" Name="Январь" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Энергия по полупиковому тарифу за Январь/&gt;OnRead" OnWrite=""><T145 OID="42" OIDLink="41" Value="03000200000002000000"/><T145 OID="65" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="29" Name="Февраль" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Энергия по полупиковому тарифу за Январь/&gt;OnRead" OnWrite=""><T145 OID="43" OIDLink="41" Value="03000300000002000000"/><T145 OID="66" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="30" Name="Март" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Энергия по полупиковому тарифу за Январь/&gt;OnRead" OnWrite=""><T145 OID="44" OIDLink="41" Value="03000400000002000000"/><T145 OID="67" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="31" Name="Апрель" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Энергия по полупиковому тарифу за Январь/&gt;OnRead" OnWrite=""><T145 OID="45" OIDLink="41" Value="03000500000002000000"/><T145 OID="69" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="32" Name="Май" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Энергия по полупиковому тарифу за Январь/&gt;OnRead" OnWrite=""><T145 OID="47" OIDLink="41" Value="03000600000002000000"/><T145 OID="70" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="33" Name="Июнь" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Энергия по полупиковому тарифу за Январь/&gt;OnRead" OnWrite=""><T145 OID="48" OIDLink="41" Value="03000700000002000000"/><T145 OID="71" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="34" Name="Июль" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Энергия по полупиковому тарифу за Январь/&gt;OnRead" OnWrite=""><T145 OID="49" OIDLink="41" Value="03000800000002000000"/><T145 OID="72" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="35" Name="Август" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Энергия по полупиковому тарифу за Январь/&gt;OnRead" OnWrite=""><T145 OID="50" OIDLink="41" Value="03000900000002000000"/><T145 OID="73" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="36" Name="Сентябрь" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Энергия по полупиковому тарифу за Январь/&gt;OnRead" OnWrite=""><T145 OID="51" OIDLink="41" Value="03000A00000002000000"/><T145 OID="74" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="37" Name="Октябрь" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Энергия по полупиковому тарифу за Январь/&gt;OnRead" OnWrite=""><T145 OID="52" OIDLink="41" Value="03000B00000002000000"/><T145 OID="75" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="38" Name="Ноябрь" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Энергия по полупиковому тарифу за Январь/&gt;OnRead" OnWrite=""><T145 OID="53" OIDLink="41" Value="03000C00000002000000"/><T145 OID="76" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="39" Name="Декабрь" DataType="19" Readable="True" Writeable="False" OnRead="&lt;Энергия по полупиковому тарифу за Январь/&gt;OnRead" OnWrite=""><T145 OID="54" OIDLink="41" Value="03000100000002000000"/><T145 OID="77" OIDLink="61" Value="03000100000002000000"/></T120></T50><T50 OID="59" Name="Дополнительно"><T120 OID="6" Name="Тест прибора" DataType="11" Readable="True" Writeable="True" OnRead="&lt;Тест прибора/&gt;OnRead" OnWrite="&lt;Тест прибора/&gt;OnWrite"><T145 OID="78" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="14" Name="Номер версии прибора" DataType="8" Readable="True" Writeable="False" OnRead="&lt;Номер версии прибора/&gt;OnRead" OnWrite=""><T145 OID="79" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="16" Name="Дата и время отключения питания" DataType="7" Readable="True" Writeable="False" OnRead="&lt;Дата и время отключения питания/&gt;OnRead" OnWrite=""><T145 OID="81" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="18" Name="Дата и время включения питания" DataType="7" Readable="True" Writeable="False" OnRead="&lt;Дата и время включения питания/&gt;OnRead" OnWrite=""><T145 OID="82" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="20" Name="Дата и время на счетчике" DataType="7" Readable="True" Writeable="True" OnRead="&lt;Дата и время на счетчике/&gt;OnRead" OnWrite="&lt;Дата и время на счетчике/&gt;OnWrite"><T145 OID="83" OIDLink="61" Value="03000300000002000000"/></T120></T50><T50 OID="85" Name="Получасовые нагрузки"><T120 OID="86" Name="Энергия на начало получаса" DataType="19" Readable="True" Writeable="False" OnRead="" OnWrite=""><T145 OID="89" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="88" Name="Дата получаса" DataType="7" Readable="True" Writeable="True" OnRead="" OnWrite=""/><T120 OID="94" Name="00:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="96" OIDLink="95" Value="03000000000002000000"/></T120><T120 OID="97" Name="00:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="98" OIDLink="95" Value="03000100000002000000"/></T120><T120 OID="99" Name="01:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="100" OIDLink="95" Value="03000200000002000000"/></T120><T120 OID="101" Name="01:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="102" OIDLink="95" Value="03000300000002000000"/></T120><T120 OID="103" Name="02:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="104" OIDLink="95" Value="03000400000002000000"/></T120><T120 OID="105" Name="02:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="106" OIDLink="95" Value="03000500000002000000"/></T120><T120 OID="107" Name="03:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="108" OIDLink="95" Value="03000600000002000000"/></T120><T120 OID="109" Name="03:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="110" OIDLink="95" Value="03000700000002000000"/></T120><T120 OID="111" Name="04:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="112" OIDLink="95" Value="03000800000002000000"/></T120><T120 OID="113" Name="04:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="114" OIDLink="95" Value="03000900000002000000"/></T120><T120 OID="115" Name="05:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="116" OIDLink="95" Value="03000A00000002000000"/></T120><T120 OID="117" Name="05:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="118" OIDLink="95" Value="03000B00000002000000"/></T120><T120 OID="119" Name="06:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="120" OIDLink="95" Value="03000C00000002000000"/></T120><T120 OID="121" Name="06:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="122" OIDLink="95" Value="03000D00000002000000"/></T120><T120 OID="123" Name="07:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="124" OIDLink="95" Value="03000E00000002000000"/></T120><T120 OID="125" Name="07:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="126" OIDLink="95" Value="03000F00000002000000"/></T120><T120 OID="127" Name="08:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="128" OIDLink="95" Value="03001000000002000000"/></T120><T120 OID="129" Name="08:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="130" OIDLink="95" Value="03001100000002000000"/></T120><T120 OID="131" Name="09:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="132" OIDLink="95" Value="03001200000002000000"/></T120><T120 OID="133" Name="09:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="134" OIDLink="95" Value="03001300000002000000"/></T120><T120 OID="135" Name="10:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="136" OIDLink="95" Value="03001400000002000000"/></T120><T120 OID="137" Name="10:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="138" OIDLink="95" Value="03001500000002000000"/></T120><T120 OID="139" Name="11:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="140" OIDLink="95" Value="03001600000002000000"/></T120><T120 OID="141" Name="11:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="142" OIDLink="95" Value="03001700000002000000"/></T120><T120 OID="143" Name="12:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="144" OIDLink="95" Value="03001800000002000000"/></T120><T120 OID="145" Name="12:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="146" OIDLink="95" Value="03001900000002000000"/></T120><T120 OID="147" Name="13:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="148" OIDLink="95" Value="03001A00000002000000"/></T120><T120 OID="149" Name="13:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="150" OIDLink="95" Value="03001B00000002000000"/></T120><T120 OID="151" Name="14:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="152" OIDLink="95" Value="03001C00000002000000"/></T120><T120 OID="153" Name="14:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="154" OIDLink="95" Value="03001D00000002000000"/></T120><T120 OID="155" Name="15:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="156" OIDLink="95" Value="03001E00000002000000"/></T120><T120 OID="157" Name="15:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="158" OIDLink="95" Value="03001F00000002000000"/></T120><T120 OID="159" Name="16:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="160" OIDLink="95" Value="03002000000002000000"/></T120><T120 OID="161" Name="16:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="162" OIDLink="95" Value="03002100000002000000"/></T120><T120 OID="163" Name="17:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="164" OIDLink="95" Value="03002200000002000000"/></T120><T120 OID="165" Name="17:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="166" OIDLink="95" Value="03002300000002000000"/></T120><T120 OID="167" Name="18:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="168" OIDLink="95" Value="03002400000002000000"/></T120><T120 OID="169" Name="18:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="170" OIDLink="95" Value="03002500000002000000"/><T145 OID="202" OIDLink="61" Value="03000000000002000000"/></T120><T120 OID="171" Name="19:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="172" OIDLink="95" Value="03002600000002000000"/><T145 OID="201" OIDLink="61" Value="03000000000002000000"/></T120><T120 OID="173" Name="19:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="174" OIDLink="95" Value="03002700000002000000"/><T145 OID="200" OIDLink="61" Value="03000000000002000000"/></T120><T120 OID="175" Name="20:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="176" OIDLink="95" Value="03002800000002000000"/><T145 OID="199" OIDLink="61" Value="03000000000002000000"/></T120><T120 OID="177" Name="20:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="178" OIDLink="95" Value="03002900000002000000"/><T145 OID="198" OIDLink="61" Value="03000000000002000000"/></T120><T120 OID="179" Name="21:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="180" OIDLink="95" Value="03002A00000002000000"/><T145 OID="197" OIDLink="61" Value="03000000000002000000"/></T120><T120 OID="181" Name="21:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="182" OIDLink="95" Value="03002B00000002000000"/><T145 OID="195" OIDLink="61" Value="03000000000002000000"/></T120><T120 OID="183" Name="22:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="184" OIDLink="95" Value="03002C00000002000000"/><T145 OID="194" OIDLink="61" Value="03000000000002000000"/></T120><T120 OID="185" Name="22:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="186" OIDLink="95" Value="03002D00000002000000"/><T145 OID="193" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="187" Name="23:00" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="188" OIDLink="95" Value="03002E00000002000000"/><T145 OID="192" OIDLink="61" Value="03000100000002000000"/></T120><T120 OID="189" Name="23:30" DataType="19" Readable="True" Writeable="True" OnRead="&lt;Нагрузка на 00:00/&gt;OnRead" OnWrite=""><T145 OID="190" OIDLink="95" Value="03002F00000002000000"/><T145 OID="191" OIDLink="61" Value="03000100000002000000"/></T120></T50><T50 OID="90" Name="Посуточное потребление"><T120 OID="91" Name="Потребление за сутки" DataType="19" Readable="True" Writeable="False" OnRead="" OnWrite=""/><T120 OID="92" Name="Дата суток" DataType="7" Readable="True" Writeable="True" OnRead="" OnWrite="&lt;Дата суток/&gt;OnWrite"/></T50></T50><T50 OID="22" Name="Конфигурация"><T120 OID="23" Name="Скорость обмена" DataType="19" Readable="True" Writeable="True" OnRead="" OnWrite=""/></T50><T120 OID="56" Name="Кол-во запросов" DataType="19" Readable="True" Writeable="False" OnRead="" OnWrite=""/><T120 OID="57" Name="ShortSost" DataType="19" Readable="True" Writeable="True" OnRead="" OnWrite=""/><T120 OID="60" Name="Имя шаблона" DataType="8" Readable="True" Writeable="False" OnRead="" OnWrite=""/><T50 OID="203" Name="Setup"><T50 OID="205" Name="Коэффициенты"><T120 OID="206" Name="Kt" DataType="4" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/><T120 OID="207" Name="Ku" DataType="4" Readable="True" Writeable="True" OnRead="" OnWrite="" Saved="True"/></T50></T50></T20><T25 OID="3" Name="Properties"><T125 OID="41" Name="Номер месяца" DataType="17" PropID="5000"/><T125 OID="61" Name="Флаги для панели команд" DataType="17" PropID="5001"/><T125 OID="95" Name="Номер получаса" DataType="17" PropID="5002" UniqueValue="True"/></T25><T30 OID="4" Name="Commands"><T130 OID="7" Name="Command_T" NoCommand="#T" CountWriteBytes="0" Param="0" OnBeforeWrite="&lt;Command_T/&gt;OnBeforeWrite" OnAfterRead="&lt;Команда Тест прибора/&gt;OnAfterRead"/><T130 OID="9" Name="Command_E" NoCommand="#E" CountWriteBytes="0" Param="0" OnBeforeWrite="&lt;Command_T/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_E/&gt;OnAfterRead"/><T130 OID="11" Name="Command_W" NoCommand="#W" CountWriteBytes="0" Param="0" OnBeforeWrite="&lt;Command_T/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_W/&gt;OnAfterRead"/><T130 OID="13" Name="Command_V" NoCommand="#V" CountWriteBytes="0" Param="0" OnBeforeWrite="&lt;Command_T/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_V/&gt;OnAfterRead"/><T130 OID="15" Name="Command_R" NoCommand="#R" CountWriteBytes="0" Param="0" OnBeforeWrite="&lt;Command_T/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_R/&gt;OnAfterRead"/><T130 OID="17" Name="Command_DataOff" NoCommand="#\F" CountWriteBytes="0" Param="0" OnBeforeWrite="&lt;Command_T/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_\F/&gt;OnAfterRead"/><T130 OID="19" Name="Command_DataOn" NoCommand="#\P" CountWriteBytes="0" Param="0" OnBeforeWrite="&lt;Command_T/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_DataOn/&gt;OnAfterRead"/><T130 OID="21" Name="Command_DataCurr" NoCommand="#D" CountWriteBytes="0" Param="0" OnBeforeWrite="&lt;Command_T/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_DataCurr/&gt;OnAfterRead"/><T130 OID="25" Name="Command_DataCurrWrite" NoCommand="@D" CountWriteBytes="8" Param="0" OnBeforeWrite="&lt;Command_T/&gt;OnBeforeWrite" OnAfterRead=""/><T130 OID="26" Name="Command_TimeCurrWrite" NoCommand="@C" CountWriteBytes="6" Param="0" OnBeforeWrite="&lt;Command_T/&gt;OnBeforeWrite" OnAfterRead=""/><T130 OID="55" Name="Command_[" NoCommand="#[B" CountWriteBytes="2" Param="0" OnBeforeWrite="&lt;Command_T/&gt;OnBeforeWrite" OnAfterRead="&lt;Command_[/&gt;OnAfterRead"/><T130 OID="87" Name="Command_?" NoCommand="#?" CountWriteBytes="6" Param="0" OnBeforeWrite="" OnAfterRead="&lt;Command_?/&gt;OnAfterRead"/><T130 OID="93" Name="Command_?1" NoCommand="#?" CountWriteBytes="6" Param="0" OnBeforeWrite="" OnAfterRead="&lt;Command_?1/&gt;OnAfterRead"/></T30><T38 OID="5" Name="Timers"/></T10></Header>

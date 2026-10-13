@@ -1,0 +1,847 @@
+unit HA_DllManager;
+
+interface
+ uses
+  Windows, Messages, SysUtils,classes,forms,Dialogs,Intf,ha_log;
+
+ type
+
+  THADriverInfo2=class(TObject)
+   private
+
+    procedure GetListDll;
+
+   protected
+    fListDll:TList;
+    fDirDLL:string;
+    procedure ClearListDll; virtual;
+   public
+    constructor Create(DirDll:string);
+    destructor Destroy; override;
+    procedure GetDrivers(Drivers:TStrings; OnlyInUse:boolean);
+    property DirDll:string read fDirDll;
+   end;
+
+  THADriverMan2=class(THADriverInfo2)
+   private
+    fLogging:bool;
+    fHWNDDebug:THandle;
+    fShortLog: boolean;
+    function GetItem(HashID:cardinal):pointer;
+    function GetCountInfo: integer;
+    function GetInfo: string;
+    function GetCountHashID: integer;
+    function GetHashID(index: integer): cardinal;
+    procedure ClearListDll; override;
+    procedure AddDebugInfo(HashId:cardinal; DD:DriverData; Writing:boolean);
+   public
+    function Open(HashID:cardinal):boolean;
+    procedure Close(HashId:cardinal; TerminateDLLThread:boolean);
+    function AddDriver(HashID:cardinal):boolean;
+
+    function DrvIsOpen(HashId:cardinal):boolean;
+    function IsWork(HashID:cardinal):boolean;
+//    function Connected(HashID:cardinal):boolean;
+    procedure AddRef(HashID:cardinal);
+    procedure ReleaseRef(HashID:cardinal);
+
+    function Write(HashId:cardinal; pDD:pDriverData):boolean;
+    function Read(HashId:cardinal; out ppDriverData:pDriverData):HResult;
+
+    function ShowDialog(HashId:cardinal):HResult;
+
+    function MinUpdateRate(HashID:cardinal):dword;
+    function MaxUpdateRate(HashID:cardinal):dword;
+
+    property HashID[index: integer]:cardinal read GetHashID;
+    property CountHash:integer read GetCountHashID;
+
+//    function SetLogging(Logging:bool):boolean;
+    property CountInfo:integer read GetCountInfo;
+    property NextInfo:string read GetInfo;
+
+    property HWNDDebug:THandle read fHWNDDebug write fHWNDDebug;
+    property ShortLog:boolean read fShortLog write fShortLog;
+
+    function DriverInUse(HashId:cardinal):boolean;
+  end;
+
+
+
+
+
+implementation
+   uses ha_utils,activeX,syncobjs,ha_wmconst;
+
+
+  type
+    TDLLWrite= function(ppDriverData:pDriverData):HResult; stdcall;
+    TDLLRead = function(out ppDriverData:pDriverData):HResult; stdcall;
+    TDLLConnect = function :HResult; stdcall;
+
+    TDLLDialog=function :HResult; stdcall;
+
+
+    THADllThread=class;
+
+    PDllItem=^TDllItem;
+    TDllItem=record
+     HashId:cardinal;
+     FileName:string[255];
+     DllThread:THADllThread;
+    // RefCount:integer;
+    end;
+
+    THADllThread=class(TThread)
+     private
+
+      fDriverMan:THADriverMan2;
+
+      fLibHND:THandle;
+      fHashID:dword;
+     // fEvent:TEvent;
+      fStop,
+      fStopped:boolean;
+
+      fWork:boolean;
+
+      //fCS:TRTLCriticalSection;
+
+
+      fNeedShowDialog:boolean;
+
+
+
+      fconnected:boolean;
+
+      fDriverDataList:TList; // текущий список команд для подачи в драйвер
+      fDriverDataList2:TList;// если при записи был получен результат S_False,
+                                 // то данные заносятся сюда.
+
+      fListResult:TList;
+ //     fCSR:TRTLCriticalSection;
+ //     fCSW:TRTLCriticalSection;
+
+      fMinUpdateRate:dword;
+      fMaxUpdateRate:dword;
+     // fLastTimeWrite:dword;
+     // fLastHandleWrite:THandle;
+
+      procedure SyncShowDialog;
+
+      procedure ClearListResult;
+      procedure ClearDriverDataList;
+      function GetIsWork: boolean;
+     protected
+      procedure Execute; override;
+     public
+      constructor Create(DriverMan:THADriverMan2; DllName:string; HashID:dword);
+      destructor Destroy; override;
+      procedure TerminateAndFree;
+      procedure Write(pDD:pDriverData);
+      function Read(out ppDriverData:pDriverData):HResult;
+      function Open:boolean;
+      function Close:boolean;
+      function ShowDialog:HResult;
+
+
+      property IsWork:boolean read GetIsWork;
+
+      property MinUpdateRate:dword read fMinUpdateRate;
+      property MaxUpdateRate:dword read fMaxUpdateRate;
+
+//      function SetLogging(Logging:bool):boolean;
+
+    end;
+
+
+
+{ THADriverInfo2 }
+
+procedure THADriverInfo2.ClearListDll;
+var i:integer;
+begin
+ for i:=0 to fListDll.Count-1 do
+  Dispose(fListDll[i]);
+ fListDll.clear;
+end;
+
+constructor THADriverInfo2.Create(DirDll: string);
+begin
+ inherited Create;
+ fListDll:=TList.Create;
+ fDirDLL:=DirDLL;
+ GetListDLL;
+end;
+
+destructor THADriverInfo2.Destroy;
+begin
+  ClearListDll;
+  fListDll.Free;
+  inherited;
+end;
+
+procedure THADriverInfo2.GetDrivers(Drivers: TStrings; OnlyInUse:boolean);
+var i:integer;
+
+begin
+ for i:=0 to fListDll.Count-1 do
+  if (OnlyInUse and (TDllItem(fListDll[i]^).DllThread<>nil)) or (not OnlyInUse) then
+   Drivers.AddObject(TDllItem(fListDll[i]^).FileName,TObject(TDLLItem(fListDll[i]^).HashId));
+
+end;
+
+procedure THADriverInfo2.GetListDll;
+
+procedure AddDll(DllName:string);
+var DllItem:PDllItem;
+begin
+  new(DllItem);
+  FillChar(DllItem^,sizeof(TDllItem),0);
+  DllItem.HashId:=MakeHashID(DllName);
+  DllItem.FileName:=DllName;
+  fListDll.Add(DllItem);
+end;
+
+var sr: TSearchRec;
+    i:integer;
+begin
+  for i:=0 to fListDll.Count-1 do
+   dispose(fListDll[i]);
+  fListDll.Clear;
+
+  if FindFirst(fDirDLL+'\*.dll',faAnyFile,sr)=0 then
+  begin
+     AddDll(sr.Name);
+    while FindNext(sr)=0 do
+      AddDll(sr.Name);
+  end;
+  FindClose(sr);
+end;
+
+{ THADriverMan2 }
+
+procedure THADriverMan2.AddDebugInfo(HashId:cardinal; DD:DriverData; Writing:boolean);
+begin
+ if fHWNDDebug=0 then exit;
+ if Writing then
+  sendmessage(fHWNDDebug,wm_DebugDriverW,integer(@DD),HashID)
+ else
+  sendmessage(fHWNDDebug,wm_DebugDriverR,integer(@DD),HashID);
+end;
+
+function THADriverMan2.AddDriver(HashID: cardinal): boolean;
+var p:PDllItem;
+begin
+ result:=false;
+ p:=GetItem(HashID);
+ if p=nil then exit;
+ try
+  if p^.DllThread=nil then
+    p^.DllThread:=THADllThread.Create(self,fDirDll+'\'+p^.FileName,HashID);
+  result:=true;
+ except
+  on E:Exception do
+   begin
+    result:=false;
+    AddLog(1,'Загрузка драйвера: '+p^.FileName,E_FAIL,e.Message);
+   end;
+ end;
+
+end;
+
+procedure THADriverMan2.AddRef(HashID: cardinal);
+begin
+
+end;
+
+procedure THADriverMan2.ClearListDll;
+var i:integer;
+begin
+ for i:=0 to fListDll.Count-1 do
+  begin
+   if TDllItem(fListDll[i]^).DllThread<>nil then
+    TDllItem(fListDll[i]^).DllThread.TerminateAndFree;
+   dispose(fListDll[i]);
+  end;
+ fListDll.Clear; 
+end;
+
+procedure THADriverMan2.Close(HashId: cardinal; TerminateDLLThread:boolean);
+var p:PDllItem;
+    i:integer;
+begin
+ if HashID<>0 then
+  begin
+   p:=GetItem(HashID);
+   if p=nil then exit;
+   if p^.DllThread=nil then
+    begin
+     AddLog(1,'Закрытие драйвера '+p^.FileName,E_FAIL,'Драйвер не загружен');
+     exit;
+    end;
+   p^.DllThread.Close;
+   if not TerminateDLLThread then exit;
+   p^.DllThread.TerminateAndFree;
+   p^.DllThread:=nil;
+  end
+ else
+   for i:=0 to GetCountHashID-1 do
+    begin
+     p:=GetItem(GetHashID(i));
+     if p=nil then continue;
+     if p^.DllThread=nil then
+      begin
+       AddLog(1,'Закрытие драйвера '+p^.FileName,E_FAIL,'Драйвер не загружен');
+       continue;
+      end;
+     p^.DllThread.Close;
+     if not TerminateDLLThread then continue;
+     p^.DllThread.TerminateAndFree;
+     p^.DllThread:=nil;
+    end;
+
+end;
+
+{function THADriverMan2.Connected(HashID: cardinal): boolean;
+var p:PDLLItem;
+begin
+ result:=false;
+ p:=GetItem(HashId);
+ if p=nil then exit;
+ if p^.DllThread=nil then exit;
+ result:=p^.DllThread.fconnected;
+
+end;
+ }
+
+function THADriverMan2.DriverInUse(HashId: cardinal): boolean;
+var p:PDllItem;
+begin
+ result:=false;
+ p:=GetItem(HashID);
+ if p=nil then exit;
+ result:=p^.DllThread<>nil;
+end;
+
+function THADriverMan2.DrvIsOpen(HashId: cardinal): boolean;
+var p:PDllItem;
+begin
+ result:=false;
+ p:=GetItem(HashID);
+ if p=nil then exit;
+ if p^.DllThread=nil then exit;
+ result:=p^.DllThread.fconnected;
+end;
+
+function THADriverMan2.GetCountHashID: integer;
+var i:integer;
+begin
+ result:=0;
+ for i:=0 to fListDll.Count-1 do
+  if TDllItem(fListDll[i]^).DllThread<>nil then
+   inc(result);
+
+end;
+
+function THADriverMan2.GetCountInfo: integer;
+begin
+ result:=0;
+{ EnterCriticalSection(fInfoCS);
+ result:=fDrvInfoList.Count;
+ LeaveCriticalSection(fInfoCS);}
+end;
+
+
+
+function THADriverMan2.GetHashID(index: integer): cardinal;
+var i,j:integer;
+begin
+ result:=0;
+ j:=-1;
+ if (index<0) or (index>=fListDLL.Count) then exit;
+ for i:=0 to fListDll.Count-1 do
+  if TDllItem(fListDLL[i]^).DllThread<>nil then
+   begin
+    inc(j);
+    if index=j then
+     begin
+      result:=TDllItem(fListDLL[i]^).HashId;
+      break;
+     end;
+   end;
+end;
+
+function THADriverMan2.GetInfo: string;
+begin
+{ EnterCriticalSection(fInfoCS);
+ if fDrvInfoList.Count=0 then exit;
+ result:=fDrvInfoList[0];
+ fDrvInfoList.Delete(0);
+ LeaveCriticalSection(fInfoCS);}
+end;
+
+function THADriverMan2.GetItem(HashID: cardinal): pointer;
+var i:integer;
+begin
+ Result:=nil;
+ for i:=0 to fListDll.Count-1 do
+  if TDllItem(fListDll[i]^).HashId=HashID then
+   begin
+     Result:=fListDll[i];
+    // if TDLLItem(Result^).DllThread=nil then
+    //   TDLLItem(Result^).DllThread:=THADllThread.Create(self,fDirDll+'\'+TDLLItem(Result^).FileName,HashID);
+     break;
+   end;
+end;
+
+function THADriverMan2.IsWork(HashID: cardinal): boolean;
+var p:PDLLItem;
+begin
+ result:=true;
+ p:=GetItem(HashId);
+ if p=nil then exit;
+ if p^.DllThread=nil then exit;
+ result:=p^.DllThread.IsWork;
+end;
+
+function THADriverMan2.MaxUpdateRate(HashID: cardinal): dword;
+var p:PDllItem;
+begin
+ result:=0;
+ p:=GetItem(HashID);
+ if p=nil then exit;
+ if p^.DllThread=nil then exit;
+ result:=p^.DllThread.MaxUpdateRate;
+end;
+
+function THADriverMan2.MinUpdateRate(HashID: cardinal): dword;
+var p:PDllItem;
+begin
+ result:=0;
+ p:=GetItem(HashID);
+ if p=nil then exit;
+ if p^.DllThread=nil then exit;
+ result:=p^.DllThread.MinUpdateRate;
+end;
+
+function THADriverMan2.Open(HashID: cardinal): boolean;
+var p:PDllItem;
+    HID:cardinal;
+    i:integer;
+begin
+ result:=false;
+ for i:=0 to GetCountHashID-1 do
+  begin
+    HID:=GetHashID(i);
+    if (HID=HashID) or (HashID=0) then
+     begin
+       p:=GetItem(HID);
+       if p=nil then continue;
+       if p^.DllThread=nil then
+         AddLog(1,'Открытие драйвера '+p^.FileName,E_FAIL,'Драйвер не загружен')
+       else
+        result:=p^.DllThread.Open;
+     end;
+    if (HID=HashID) and (HashID<>0) then
+     break;
+  end;
+end;
+
+function THADriverMan2.Read(HashId: cardinal; out ppDriverData:pDriverData):HResult;
+var p:PDLLItem;
+begin
+ result:=s_ok;
+ ppDriverData:=nil;
+ p:=GetItem(HashID);
+ if p=nil then exit;
+ if p^.DllThread=nil then exit;
+// if p^.DllThread.fWork then exit;
+ result:=p^.DllThread.Read(ppDriverData);
+// if result<>s_ok then exit;
+// if fHWNDDebug=0 then exit;
+// AddDebugInfo(HashID,ppDriverData^,false);
+end;
+
+procedure THADriverMan2.ReleaseRef(HashID: cardinal);
+begin
+
+end;
+
+{function THADriverMan2.SetLogging(Logging: bool): boolean;
+var p:PDllItem;
+    i:integer;
+begin
+ if fLogging=Logging then exit;
+ for i:=0 to GetCountHashID-1 do
+  begin
+   p:=GetItem(GetHashID(i));
+   if p=nil then continue;
+   p^.DllThread.SetLogging(Logging);
+  end;
+ fLogging:=Logging;
+end;
+ }
+function THADriverMan2.ShowDialog(HashId: cardinal): HResult;
+var p:PDllItem;
+    LibHND:THandle;
+    DS:TDLLDialog;
+    s:string;
+begin
+
+ result:=s_ok;
+ p:=GetItem(HashID);
+ if p=nil then exit;
+ if p^.DllThread<>nil then
+  p^.DllThread.ShowDialog
+ else
+  begin
+    s:=fDirDll+'\'+p^.FileName;
+    LibHND:=LoadLibrary(PCHAR(s));
+    try
+      @DS:=GetProcAddress(LibHND,'ShowDialog');
+      if @DS<>nil then
+       try
+        DS;
+       except
+        on E:Exception do
+         AddLog(1,'Ошибка при вызове функции драйвера "ShowDialog"',E_FAIL,e.Message);
+       end;
+
+    finally
+     FreeLibrary(LibHND);
+    end;
+  end;
+end;
+
+function THADriverMan2.Write(HashId: cardinal; pDD: pDriverData): boolean;
+var p:PDllItem;
+begin
+ result:=false;
+  p:=GetItem(HashID);
+  if p=nil then exit;
+  if p^.DllThread=nil then
+   p^.DllThread:=THADllThread.Create(self,fDirDll+'\'+p^.FileName,HashID);
+// if fHWNDDebug<>0 then
+//  AddDebugInfo(HashID,pDD^,true);
+  p^.DllThread.Write(pDD);
+  result:=true;
+
+end;
+
+{ THADllThread }
+
+procedure THADllThread.ClearDriverDataList;
+var i:integer;
+    dd:pDriverData;
+begin
+  for i:=0 to fDriverDataList.Count-1 do
+   begin
+    dd:=fDriverDataList[i];
+    coTaskMemFree(dd.pData);
+    if Addr(dd.szAddress)<>nil then
+      coTaskMemFree(dd.szAddress);
+    if Addr(dd.szNoCommand)<>nil then
+      coTaskMemFree(dd.szNoCommand);
+    dispose(dd);
+   end;
+ fDriverDataList.Clear;
+
+ for i:=0 to fDriverDataList2.Count-1 do
+  begin
+   dd:=fDriverDataList2[i];
+   coTaskMemFree(dd.pData);
+   if Addr(dd.szAddress)<>nil then
+     coTaskMemFree(dd.szAddress);
+   if Addr(dd.szNoCommand)<>nil then
+     coTaskMemFree(dd.szNoCommand);
+   dispose(dd);
+  end;
+ fDriverDataList2.Clear;
+end;
+
+procedure THADllThread.ClearListResult;
+var dd:pDriverData;
+    i:integer;
+begin
+ for i:=0 to fListResult.Count-1 do
+  try
+     dd:=fListResult[i];
+
+     if dd.dwDataSize>0 then
+      coTaskMemFree(DD^.pData);
+
+     if dd.szAddress<>nil then
+      coTaskMemFree(DD.szAddress);
+
+     if dd.szNoCommand<>nil then
+      coTaskMemFree(DD.szNoCommand);
+
+     coTaskMemFree(DD);
+  except
+   
+  end;
+ fListResult.Clear;
+end;
+
+function THADllThread.Close: boolean;
+var CD:TDllConnect;
+begin
+  result:=false;
+  @CD:=GetProcAddress(fLibHND,'CloseDriver');
+  if @CD<>nil then
+   begin
+    CD;
+    result:=true;
+    fConnected:=false;
+   end;
+
+ 
+  fStop:=true;
+  while not fStopped do
+   sleep(1);
+  ClearListResult;
+  ClearDriverDataList;
+end;
+
+constructor THADllThread.Create(DriverMan:THADriverMan2; DllName: string; HashID:dword);
+begin
+ inherited Create(false);
+ fDriverMan:=DriverMan;
+ fHashID:=HashID;
+ fLibHND:=LoadLibrary(PCHAR(DLLName));
+ fListResult:=TList.Create;
+
+ fDriverDataList:=TList.Create;
+ fDriverDataList2:=TList.Create;
+
+
+ fWork:=false;
+ fConnected:=false;
+ fNeedShowDialog:=false;
+ // fResultWrite:=s_ok;
+ fStop:=true;
+
+end;
+
+destructor THADllThread.Destroy;
+begin
+ // fEvent.Free;
+  ClearListResult;
+  fListResult.Free;
+  ClearDriverDataList;
+  fDriverDataList.Free;
+  fDriverDataList2.Free;
+
+  FreeLibrary(fLibHND);
+//  DeleteCriticalSection(fCSR);
+//  DeleteCriticalSection(fCSW);
+  inherited;
+end;
+
+procedure THADllThread.Execute;
+var DW:TDllWrite;
+    DR:TDLLRead;
+    HashDrv:dword;
+  //  p:PDriverData;
+    pDD:pDriverData;
+    resw,resr:HResult;
+
+function WriteToDriver:HResult;
+begin
+ result:=E_Fail;
+ 
+
+ @DW:=GetProcAddress(fLibHND,'Write');
+ if @DW<>nil then
+  begin
+   Result:=DW(pDD);
+   if fDriverMan.fHWNDDebug<>0 then
+    fDriverMan.AddDebugInfo(fHashID,pDD^,true);
+  end;
+
+ if (Result=s_ok) or (Result=E_fail) then
+  begin
+
+    if pDD.pData<>nil then
+     coTaskMemFree(pDD.pData);
+    if Addr(pDD.szAddress)<>nil then
+      coTaskMemFree(pDD.szAddress);
+    if Addr(pDD.szNoCommand)<>nil then
+      coTaskMemFree(pDD.szNoCommand);
+    coTaskMemFree(pDD);
+  end;
+end;
+
+begin
+ //@DW:=GetProcAddress(fLibHND,'Write');
+ //@DR:=GetProcAddress(fLibHND,'Read');
+
+ repeat
+  sleep(1);
+ try
+ if fNeedShowDialog then
+  try
+   Synchronize(SyncShowDialog);
+  finally
+   fNeedShowDialog:=false;
+  end;
+
+ if fStop then
+  fStopped:=true
+ else
+  begin
+     fStopped:=false;
+
+     // проверям, есть ли в очереди команды для драйвера
+     // если команда отвергнута драйвером (драйвер занят)
+     // то записываем данные команды в список отложенных команд
+    // EnterCriticalSection(fCSR);
+    // try
+       if fDriverDataList.Count>0 then
+        begin
+         pDD:=fDriverDataList[0];
+         resW:=WriteToDriver;
+         if resW=s_false then
+           fDriverDataList2.Add(pDD);
+
+         fDriverDataList.Delete(0);
+        end;
+
+       // проверяем список отложенных команд
+       // если драйвер опять отверг пакет,
+       // опять добавляем этот пакет в конец списка
+       if fDriverDataList2.Count>0 then
+        begin
+         pDD:=fDriverDataList2[0];
+         resW:=WriteToDriver;
+         if resW=s_false then
+           fDriverDataList2.Add(pDD);
+
+         fDriverDataList2.Delete(0);
+        end;
+    // finally
+     // LeaveCriticalSection(fCSR);
+    // end;
+
+
+
+      @DR:=GetProcAddress(fLibHND,'Read');
+      if @DR<>nil then
+       begin
+
+        resr:=DR(pDD);
+
+        if resr=s_ok then
+         begin
+        //  EnterCriticalSection(fCSR);
+         if fDriverMan.fHWNDDebug<>0 then
+           fDriverMan.AddDebugInfo(fHashID,pDD^,false);
+           
+         if pDD^.AddrDrv=0 then
+          fListResult.Add(pDD)
+         else
+          begin
+           HashDrv:=pDD^.AddrDrv;
+           pDD^.AddrDrv:=fHashID;
+           fDriverMan.Write(HashDrv,pDD);
+          end;
+        //  LeaveCriticalSection(fCSR);
+         end;
+       end;
+
+  end;
+ except
+  on E:Exception do
+   AddLog(1,'Execute DLLManager',E_Fail,E.Message);
+ end;
+ until Terminated;
+end;
+
+function THADllThread.GetIsWork: boolean;
+begin
+// EnterCriticalSection(fCSR);
+ result:=fDriverDataList.Count>0;
+// LeaveCriticalSection(fCSR);
+end;
+
+function THADllThread.Open: boolean;
+var CD:TDllConnect;
+begin
+ result:=false;
+ @CD:=GetProcAddress(fLibHND,'OpenDriver');
+ if @CD<>nil then
+  result:=CD=s_ok;
+ fConnected:=result;
+ fStop:=false;
+
+end;
+
+function THADllThread.Read(out ppDriverData:pDriverData): HResult;
+begin
+ result:=s_false;
+ ppDriverData:=nil;
+
+// EnterCriticalSection(fCSR);
+ if fListResult.Count>0 then
+  begin
+   result:=s_ok;
+   ppDriverData:=fListResult[0];
+   fListResult.Delete(0);
+ //  if fDriverMan.fHWNDDebug<>0 then
+ //   fDriverMan.AddDebugInfo(fHashID,ppDriverData^,false);
+
+  end;
+// LeaveCriticalSection(fCSR);
+end;
+
+{function THADllThread.SetLogging(Logging: bool): boolean;
+//var SL:TDLLSetLogging;
+//    i:integer;
+begin
+ result:=true;
+// result:=false;
+// @SL:=GetProcAddress(fLibHND,'SetLogging');
+// if @SL<>nil then
+//  result:=SL(Logging)=s_ok;
+
+
+end;
+ }
+function THADllThread.ShowDialog: HResult;
+begin
+ fNeedShowDialog:=true;
+ result:=s_ok;
+end;
+
+procedure THADllThread.SyncShowDialog;
+var DS:TDLLDialog;
+begin
+ @DS:=GetProcAddress(fLibHND,'ShowDialog');
+ if @DS<>nil then
+  DS;
+
+end;
+
+procedure THADllThread.TerminateAndFree;
+begin
+  fWork:=false;
+//  fEvent.SetEvent;
+  terminate;
+  waitfor;
+  free;
+end;
+
+procedure THADllThread.Write(pDD: pDriverData);
+begin
+ if not fConnected then
+  begin
+   Open;
+   if not fConnected then exit;
+  end;
+// if fDriverMan.fHWNDDebug<>0 then
+//  fDriverMan.AddDebugInfo(fHashID,pDD^,true);
+ fDriverDataList.Add(pDD);
+end;
+
+end.
